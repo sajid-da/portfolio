@@ -1,6 +1,7 @@
 import { Activity, Cloud, Code2, Trophy } from 'lucide-react'
 import { FaUniversity, FaBrain } from 'react-icons/fa'
 import { SiGooglecloud, SiCoursera } from 'react-icons/si'
+import { TerminalPanel } from './TerminalPanel'
 
 export const MissionControl = () => {
   return (
@@ -91,6 +92,11 @@ export const MissionControl = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ── Interactive Terminal ── */}
+      <div className="mb-16">
+        <TerminalPanel />
       </div>
 
       {/* Social Proof */}

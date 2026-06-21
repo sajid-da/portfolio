@@ -40,6 +40,7 @@ export const BootSequence = ({ onComplete }: { onComplete: () => void }) => {
           {progress > 30 && <div>&gt; Connecting to 3D Rendering Engine... <span className="text-green-500">OK</span></div>}
           {progress > 50 && <div>&gt; Establishing WebGL Context... <span className="text-green-500">OK</span></div>}
           {progress > 70 && <div>&gt; Waking up AI systems... <span className="text-green-500">READY</span></div>}
+          {progress > 85 && <div className="text-gray-400">&gt; NOTE: Type 'help' in terminal for commands...</div>}
           {progress >= 100 && <div className="text-primary animate-pulse">&gt; LAUNCH SEQUENCE INITIATED...</div>}
         </div>
       </div>
