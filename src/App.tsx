@@ -12,6 +12,7 @@ import { BootSequence } from './components/layout/BootSequence'
 import { HeroScene } from './components/3d/HeroScene'
 import { SkillsGalaxy } from './components/3d/SkillsGalaxy'
 import { ContactCore } from './components/3d/ContactCore'
+import { NeuralFace } from './components/3d/NeuralFace'
 
 function App() {
   const { isRecruiterMode } = useStore()
@@ -24,6 +25,7 @@ function App() {
   return (
     <SmoothScroll>
       <MainLayout>
+        {!isRecruiterMode && <NeuralFace />}
         {isRecruiterMode ? (
           <div className="max-w-4xl mx-auto px-6 py-16">
             {/* ... Recruiter Mode ... */}
