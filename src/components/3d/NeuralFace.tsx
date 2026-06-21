@@ -18,41 +18,46 @@ const fragmentShader = `
   uniform vec2 uGaze;
   uniform float uGlobalAlpha;
   uniform vec3 uColor;
+  uniform float uSmile;
 
   varying vec2 vUv;
 
   void main() {
-    // Basic UV
     vec2 uv = vUv;
 
     // 1. Initial Texture Sample to get Luminance (Depth Map approximation)
-    // The brighter the pixel, the "closer" it is.
     vec4 baseTex = texture2D(uTexture, uv);
     float luma = dot(baseTex.rgb, vec3(0.299, 0.587, 0.114));
 
-    // 2. Fake 3D Parallax / Gaze Tracking
-    // Offset UVs based on gaze and pixel brightness
-    // The darker areas (background) move less, bright areas (foreground) move more
-    vec2 parallaxOffset = uGaze * (luma * 0.05);
+    // 2. Fake 3D Parallax / Gaze Tracking (Increased sensitivity)
+    // Darker areas (background) move less, bright areas (foreground) move more
+    vec2 parallaxOffset = uGaze * (luma * 0.15); // Increased from 0.05 to 0.15
     
     // 3. Subtle Breathing Warp
-    // A very slow, gentle sine wave distortion
     float breath = sin(uTime * 1.5 + uv.y * 5.0) * 0.003;
     uv += parallaxOffset + vec2(0.0, breath);
 
-    // 4. Final Texture Sample with distorted UVs
+    // 4. Smile Distortion
+    // Approximate mouth region: center x=0.5, y=0.3
+    // We want to pull the corners of the mouth UP.
+    // To move the image UP, we sample FROM BELOW (subtract from uv.y).
+    float mouthDist = distance(uv, vec2(0.5, 0.28));
+    float mouthMask = smoothstep(0.15, 0.0, mouthDist);
+    // The distortion is stronger at the corners (abs(x - 0.5) is larger)
+    float cornerPull = abs(uv.x - 0.5) * 0.4;
+    uv.y -= uSmile * mouthMask * cornerPull;
+
+    // 5. Final Texture Sample with distorted UVs
     vec4 texColor = texture2D(uTexture, uv);
     float finalLuma = dot(texColor.rgb, vec3(0.299, 0.587, 0.114));
 
-    // 5. Colorize (Replace Gold with Portfolio Cyan)
-    // We use the luminance to drive the intensity of our cyan color
-    vec3 finalColor = uColor * finalLuma * 2.0; // Boosted slightly for glow
+    // 6. Colorize (Replace Gold with Portfolio Cyan)
+    vec3 finalColor = uColor * finalLuma * 2.0;
 
-    // 6. Smooth Edges (Vignette) so it blends perfectly into the background
+    // 7. Smooth Edges (Vignette)
     float dist = distance(vUv, vec2(0.5));
     float vignette = smoothstep(0.5, 0.2, dist);
 
-    // Output
     gl_FragColor = vec4(finalColor, texColor.a * uGlobalAlpha * vignette);
   }
 `;
@@ -98,8 +103,11 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef }: NeuralSceneProps) => {
     uTime:        { value: 0 },
     uGaze:        { value: new THREE.Vector2(0, 0) },
     uGlobalAlpha: { value: 1.0 },
-    uColor:       { value: new THREE.Color('#00D4FF') } // The exact portfolio cyan
+    uColor:       { value: new THREE.Color('#00D4FF') }, // The exact portfolio cyan
+    uSmile:       { value: 0.0 }
   }), [texture])
+
+  const smileRef = useRef(0.0)
 
   useFrame((state) => {
     const t = state.clock.elapsedTime
@@ -113,7 +121,9 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef }: NeuralSceneProps) => {
     let targetOpacity = sectionState.opacity;
     if (section === 'terminal') targetOpacity = 0.15;
 
-    // ── Gaze Tracking ──
+    // ── Gaze Tracking & Smiling ──
+    let targetSmile = 0.0;
+    
     if (idleSec < 2) {
       const [mx, my] = mouseRef.current
       gazeTargetRef.current.set(mx, my) 
@@ -124,7 +134,13 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef }: NeuralSceneProps) => {
       gazeTargetRef.current.set(driftX, driftY)
     }
 
+    // Smile when idle for > 2 seconds, or briefly every 15 seconds
+    if (idleSec > 2.0 || (t % 15.0) < 2.0) {
+      targetSmile = 1.0;
+    }
+
     gazeRef.current.lerp(gazeTargetRef.current, 0.08)
+    smileRef.current += (targetSmile - smileRef.current) * 0.05
 
     // ── Interpolations ──
     opacityRef.current += (targetOpacity - opacityRef.current) * 0.05
@@ -138,6 +154,7 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef }: NeuralSceneProps) => {
     uniforms.uTime.value = t
     uniforms.uGaze.value.copy(gazeRef.current)
     uniforms.uGlobalAlpha.value = opacityRef.current
+    uniforms.uSmile.value = smileRef.current
   })
 
   // The image is perfectly square, so aspect ratio is 1:1. Scale dictates size.
