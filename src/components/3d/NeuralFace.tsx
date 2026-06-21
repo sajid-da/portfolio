@@ -1,19 +1,19 @@
 import { useRef, useEffect, useMemo, useCallback } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { FACE_VERTICES, PARTICLE_COUNT } from './faceVertices'
+import { skullPoints, eyePoints } from './faceVertices'
 
-// ─── Shader source ────────────────────────────────────────────────────────────
+// ─── Shader Source ────────────────────────────────────────────────────────────
 
 const vertexShader = `
   uniform float uTime;
-  uniform float uEnergy;
   uniform vec2  uGaze;
+  uniform vec2  uHeadTilt;
   uniform float uBlink;
   uniform float uBreath;
-  uniform float uScrollDepth;
-  uniform vec3  uFocusColor;
-  uniform float uConverge;
+  uniform vec3  uBaseColor;
+  uniform vec3  uHighlightColor;
+  uniform float uIsEye;
 
   attribute vec3  aPos;
   attribute float aSize;
@@ -22,154 +22,205 @@ const vertexShader = `
   varying vec3  vColor;
   varying float vAlpha;
 
+  // Rotation matrix around Y and X axes for head tilt
+  mat3 rotationMatrix(vec2 tilt) {
+    float cx = cos(tilt.y);
+    float sx = sin(tilt.y);
+    float cy = cos(tilt.x);
+    float sy = sin(tilt.x);
+    
+    mat3 rx = mat3(
+      1.0, 0.0, 0.0,
+      0.0, cx, -sx,
+      0.0, sx, cx
+    );
+    mat3 ry = mat3(
+      cy, 0.0, sy,
+      0.0, 1.0, 0.0,
+      -sy, 0.0, cy
+    );
+    return ry * rx;
+  }
+
   void main() {
-    // Start with the instanced coordinate
     vec3 p = aPos;
 
     // ── Breathing: subtle scale oscillation ──
-    float breathScale = 1.0 + uBreath * 0.025;
+    float breathScale = 1.0 + uBreath * 0.015;
     p *= breathScale;
 
-    // ── Contact convergence: pull particles toward eye region ──
-    if (uConverge > 0.0) {
-      vec3 eyeCenter = vec3(0.0, 0.23, 0.4);
-      p = mix(p, eyeCenter + (p - eyeCenter) * 0.3, uConverge * 0.6);
+    // ── Head Tilt (applies to all) ──
+    p = rotationMatrix(uHeadTilt) * p;
+
+    if (uIsEye > 0.5) {
+      // ── Aggressive Eye Tracking ──
+      // Eyes move further than the rest of the head
+      p.xy += uGaze * 0.25;
+
+      // ── Blink: collapse eye particles vertically ──
+      // Assume eyes are roughly around y=0.1
+      float blinkMask = smoothstep(0.15, 0.0, abs(p.y - 0.1));
+      p.y -= blinkMask * uBlink * 0.08;
     }
 
-    // ── Gaze: offset eye-region particles based on mouse ──
-    float eyeMask = smoothstep(0.25, 0.0, length(p.xy - vec2(0.0, 0.23)));
-    p.xy += uGaze * eyeMask * 0.08;
-
-    // ── Blink: collapse eye particles vertically ──
-    float blinkMask = smoothstep(0.22, 0.0, abs(p.x) - 0.1) *
-                      smoothstep(0.15, 0.0, abs(p.y - 0.23));
-    p.y -= blinkMask * uBlink * 0.12;
-
-    // ── Neural pulse wave from eye center ──
-    float dist = length(p - vec3(0.0, 0.23, 0.35));
-    float pulse = sin(dist * 8.0 - uTime * 3.0 + aPulseOffset) * 0.5 + 0.5;
-    pulse *= uEnergy;
-
-    // ── Scroll depth: fade and shrink particles away from face center mid-site ──
-    float scrollFade = 1.0 - smoothstep(0.3, 0.7, uScrollDepth) * 0.45;
-    scrollFade += smoothstep(0.7, 1.0, uScrollDepth) * 0.35;
+    // ── Neural pulse wave ──
+    float dist = length(p);
+    float pulse = sin(dist * 10.0 - uTime * 4.0 + aPulseOffset) * 0.5 + 0.5;
 
     // ── Size Calculation ──
-    float s = aSize * (1.0 + pulse * 0.6) * scrollFade * 0.0025;
+    float s = aSize * (1.0 + pulse * 0.5) * 0.003;
+    if (uIsEye > 0.5) {
+      s *= 1.5; // Eyes are slightly larger/brighter
+    }
 
-    // Compute final vertex position
-    // "position" is the vertex of the base geometry (circle/plane)
-    // "p" is the particle's origin
     vec3 finalPos = p + position * s;
-
     vec4 mvPos = modelViewMatrix * vec4(finalPos, 1.0);
     gl_Position = projectionMatrix * mvPos;
 
     // ── Color ──
-    float glow = 0.4 + pulse * 0.6 * uEnergy;
-    vColor = mix(vec3(0.0, 0.83, 1.0), uFocusColor, uEnergy * 0.7) * glow;
-    vAlpha = (0.5 + pulse * 0.5) * scrollFade;
+    float glow = 0.5 + pulse * 0.5;
+    if (uIsEye > 0.5) {
+      // Eyes: Intense cyan/white glow
+      vColor = mix(uBaseColor, vec3(1.0, 1.0, 1.0), pulse * 0.8 + 0.2);
+      vAlpha = 0.8 + pulse * 0.2;
+    } else {
+      // Skull: Muted cyan/purple network
+      vColor = mix(uBaseColor, uHighlightColor, pulse * 0.6);
+      vAlpha = 0.3 + pulse * 0.4;
+    }
   }
 `
 
 const fragmentShader = `
+  uniform float uGlobalAlpha;
   varying vec3  vColor;
   varying float vAlpha;
 
   void main() {
-    // We are rendering a circle geometry, so we don't need pointcoord discard
-    gl_FragColor = vec4(vColor, vAlpha);
+    float dist = length(gl_PointCoord - vec2(0.5));
+    // Optional: soft circle for point rendering if using GL_POINTS
+    // But we are using instanced circle geometry, so PointCoord isn't strictly needed.
+    gl_FragColor = vec4(vColor, vAlpha * uGlobalAlpha);
   }
 `
 
-// ─── Section color map ────────────────────────────────────────────────────────
+// ─── Section Configuration ────────────────────────────────────────────────────
 
-const SECTION_STATES: Record<string, { color: [number, number, number]; energy: number }> = {
-  hero:         { color: [0.0, 0.83, 1.0],  energy: 0.30 },
-  about:        { color: [0.0, 0.83, 1.0],  energy: 0.40 },
-  skills:       { color: [0.23, 0.51, 0.96], energy: 0.60 },
-  projects:     { color: [0.54, 0.36, 0.96], energy: 0.80 },
-  achievements: { color: [0.96, 0.62, 0.04], energy: 0.90 },
-  contact:      { color: [1.0, 1.0, 1.0],   energy: 1.00 },
+const SECTION_STATES: Record<string, { opacity: number; xOffset: number }> = {
+  hero:         { opacity: 1.0, xOffset: 0.0 },
+  about:        { opacity: 0.7, xOffset: 1.5 },
+  skills:       { opacity: 0.55, xOffset: 1.5 },
+  projects:     { opacity: 0.4, xOffset: 1.5 },
+  achievements: { opacity: 0.2, xOffset: 1.5 },
+  contact:      { opacity: 1.0, xOffset: 0.0 },
 }
 
-// ─── Main 3D scene ────────────────────────────────────────────────────────────
+// ─── Main 3D Scene ────────────────────────────────────────────────────────────
 
 interface NeuralSceneProps {
   mouseRef: React.MutableRefObject<[number, number]>
   idleRef: React.MutableRefObject<number>
   sectionRef: React.MutableRefObject<string>
-  scrollDepthRef: React.MutableRefObject<number>
 }
 
-const NeuralScene = ({ mouseRef, idleRef, sectionRef, scrollDepthRef }: NeuralSceneProps) => {
-  const { size } = useThree()
-  const meshRef = useRef<THREE.InstancedMesh>(null)
+const NeuralScene = ({ mouseRef, idleRef, sectionRef }: NeuralSceneProps) => {
+  const skullMeshRef = useRef<THREE.InstancedMesh>(null)
+  const eyeMeshRef = useRef<THREE.InstancedMesh>(null)
+  const groupRef = useRef<THREE.Group>(null)
+
   const gazeRef = useRef(new THREE.Vector2(0, 0))
   const gazeTargetRef = useRef(new THREE.Vector2(0, 0))
-  const energyRef = useRef(0.3)
-  const colorRef = useRef(new THREE.Color(0, 0.83, 1))
+  const headTiltRef = useRef(new THREE.Vector2(0, 0))
+  const headTiltTargetRef = useRef(new THREE.Vector2(0, 0))
+  
   const blinkRef = useRef(0)
-  const nextBlinkRef = useRef(Date.now() + 10000 + Math.random() * 10000)
+  const nextBlinkRef = useRef(Date.now() + 5000 + Math.random() * 8000)
   const blinkingRef = useRef(false)
 
-  // Use Instanced attributes
-  const { positions, sizes, pulseOffsets, count } = useMemo(() => {
-    const isMobile = size.width < 768
-    const targetCount = isMobile ? 3000 : PARTICLE_COUNT
-    const step = Math.max(1, Math.ceil(PARTICLE_COUNT / targetCount))
-    const p: number[] = []
-    const s: number[] = []
-    const po: number[] = []
-    
-    for (let i = 0; i < PARTICLE_COUNT; i += step) {
-      p.push(FACE_VERTICES[i * 3], FACE_VERTICES[i * 3 + 1], FACE_VERTICES[i * 3 + 2])
-      s.push(1.5 + Math.random() * 2.5)
-      po.push(Math.random() * Math.PI * 2)
-    }
-    return {
-      positions: new Float32Array(p),
-      sizes: new Float32Array(s),
-      pulseOffsets: new Float32Array(po),
-      count: p.length / 3
-    }
-  }, [size.width])
+  const opacityRef = useRef(1.0)
+  const xOffsetRef = useRef(0.0)
 
-  const particleUniforms = useMemo(() => ({
-    uTime:        { value: 0 },
-    uEnergy:      { value: 0.3 },
-    uGaze:        { value: new THREE.Vector2(0, 0) },
-    uBlink:       { value: 0 },
-    uBreath:      { value: 0 },
-    uScrollDepth: { value: 0 },
-    uFocusColor:  { value: new THREE.Vector3(0, 0.83, 1) },
-    uConverge:    { value: 0 },
+  // ── Setup Instanced Data ──
+  const { skullData, eyeData } = useMemo(() => {
+    // SKULL
+    const sCount = skullPoints.length / 3
+    const sSizes = new Float32Array(sCount)
+    const sPulse = new Float32Array(sCount)
+    for (let i = 0; i < sCount; i++) {
+      sSizes[i] = 1.0 + Math.random() * 2.0
+      sPulse[i] = Math.random() * Math.PI * 2
+    }
+
+    // EYES
+    const eCount = eyePoints.length / 3
+    const eSizes = new Float32Array(eCount)
+    const ePulse = new Float32Array(eCount)
+    for (let i = 0; i < eCount; i++) {
+      eSizes[i] = 2.0 + Math.random() * 2.0 // Denser/larger
+      ePulse[i] = Math.random() * Math.PI * 2
+    }
+
+    return {
+      skullData: { count: sCount, sizes: sSizes, pulse: sPulse },
+      eyeData: { count: eCount, sizes: eSizes, pulse: ePulse }
+    }
+  }, [])
+
+  const skullUniforms = useMemo(() => ({
+    uTime:           { value: 0 },
+    uGaze:           { value: new THREE.Vector2(0, 0) },
+    uHeadTilt:       { value: new THREE.Vector2(0, 0) },
+    uBlink:          { value: 0 },
+    uBreath:         { value: 0 },
+    uIsEye:          { value: 0.0 },
+    uBaseColor:      { value: new THREE.Color('#00D4FF') }, // Cyan
+    uHighlightColor: { value: new THREE.Color('#8B5CF6') }, // Purple
+    uGlobalAlpha:    { value: 1.0 }
+  }), [])
+
+  const eyeUniforms = useMemo(() => ({
+    uTime:           { value: 0 },
+    uGaze:           { value: new THREE.Vector2(0, 0) },
+    uHeadTilt:       { value: new THREE.Vector2(0, 0) },
+    uBlink:          { value: 0 },
+    uBreath:         { value: 0 },
+    uIsEye:          { value: 1.0 },
+    uBaseColor:      { value: new THREE.Color('#00FFFF') }, // Bright Cyan
+    uHighlightColor: { value: new THREE.Color('#FFFFFF') }, // White highlights
+    uGlobalAlpha:    { value: 1.0 }
   }), [])
 
   const doBlink = useCallback(async () => {
     if (blinkingRef.current) return
     blinkingRef.current = true
-    const steps = 12
+    const steps = 8
     for (let i = 0; i <= steps; i++) {
       blinkRef.current = i < steps / 2 ? i / (steps / 2) : 1 - (i - steps / 2) / (steps / 2)
       await new Promise(r => setTimeout(r, 16))
     }
     blinkRef.current = 0
     blinkingRef.current = false
-    nextBlinkRef.current = Date.now() + 8000 + Math.random() * 12000
+    nextBlinkRef.current = Date.now() + 4000 + Math.random() * 8000
   }, [])
 
-  // Initialize instanceMatrix to Identity
+  // Initialize instance matrices
   useEffect(() => {
-    if (meshRef.current) {
-      const dummy = new THREE.Object3D()
-      for (let i = 0; i < count; i++) {
+    const dummy = new THREE.Object3D()
+    if (skullMeshRef.current) {
+      for (let i = 0; i < skullData.count; i++) {
         dummy.updateMatrix()
-        meshRef.current.setMatrixAt(i, dummy.matrix)
+        skullMeshRef.current.setMatrixAt(i, dummy.matrix)
       }
-      meshRef.current.instanceMatrix.needsUpdate = true
+      skullMeshRef.current.instanceMatrix.needsUpdate = true
     }
-  }, [count])
+    if (eyeMeshRef.current) {
+      for (let i = 0; i < eyeData.count; i++) {
+        dummy.updateMatrix()
+        eyeMeshRef.current.setMatrixAt(i, dummy.matrix)
+      }
+      eyeMeshRef.current.instanceMatrix.needsUpdate = true
+    }
+  }, [skullData.count, eyeData.count])
 
   useFrame((state) => {
     const t = state.clock.elapsedTime
@@ -179,56 +230,80 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef, scrollDepthRef }: NeuralSc
 
     if (Date.now() > nextBlinkRef.current) doBlink()
 
-    if (idleSec < 5) {
+    // ── Gaze & Tilt Logic ──
+    if (idleSec < 2) {
+      // Active Tracking
       const [mx, my] = mouseRef.current
-      const predict = 0.3
-      gazeTargetRef.current.set(mx * (1 + predict), my * (1 + predict))
-    } else if (idleSec < 10) {
-      const fade = 1 - (idleSec - 5) / 5
-      const [mx, my] = mouseRef.current
-      gazeTargetRef.current.set(mx * fade, my * fade)
+      gazeTargetRef.current.set(mx * 1.5, my * 1.5)
+      headTiltTargetRef.current.set(mx * 0.4, my * 0.4)
     } else {
-      gazeTargetRef.current.set(
-        Math.sin(t * 0.07) * 0.03,
-        Math.sin(t * 0.11) * 0.02
-      )
+      // Idle state: eyes slowly lock to center, head tilts back slowly with slight breathing drift
+      const lockSpeed = Math.min(1.0, (idleSec - 2) * 0.05) // Gradually lock over time
+      
+      // Idle drift
+      const driftX = Math.sin(t * 0.2) * 0.1 * (1.0 - lockSpeed)
+      const driftY = Math.cos(t * 0.15) * 0.1 * (1.0 - lockSpeed)
+      
+      gazeTargetRef.current.set(driftX, driftY)
+      headTiltTargetRef.current.set(driftX * 0.2, driftY * 0.2)
     }
 
-    gazeTargetRef.current.clampLength(0, 0.14)
-    gazeRef.current.lerp(gazeTargetRef.current, 0.05)
+    gazeTargetRef.current.clampLength(0, 1.0)
+    gazeRef.current.lerp(gazeTargetRef.current, 0.1)
+    headTiltRef.current.lerp(headTiltTargetRef.current, 0.05)
 
-    energyRef.current += (sectionState.energy - energyRef.current) * 0.02
-    const [cr, cg, cb] = sectionState.color
-    colorRef.current.lerp(new THREE.Color(cr, cg, cb), 0.02)
+    // ── Section Interpolation ──
+    opacityRef.current += (sectionState.opacity - opacityRef.current) * 0.05
+    xOffsetRef.current += (sectionState.xOffset - xOffsetRef.current) * 0.03
+    
+    if (groupRef.current) {
+      // Base scale adjustment
+      groupRef.current.position.x = xOffsetRef.current
+    }
 
-    const breath = Math.sin(t * (Math.PI * 2) / 10) * 0.5 + 0.5
-    const converge = section === 'contact' ? Math.min(energyRef.current, 1.0) : 0
+    const breath = Math.sin(t * (Math.PI * 2) / 6) * 0.5 + 0.5;
 
-    const pu = particleUniforms
-    pu.uTime.value = t
-    pu.uEnergy.value = energyRef.current
-    pu.uGaze.value.copy(gazeRef.current)
-    pu.uBlink.value = blinkRef.current
-    pu.uBreath.value = breath
-    pu.uScrollDepth.value = scrollDepthRef.current
-    pu.uFocusColor.value.set(colorRef.current.r, colorRef.current.g, colorRef.current.b)
-    pu.uConverge.value = converge
+    // Update Uniforms
+    [skullUniforms, eyeUniforms].forEach((u: any) => {
+      u.uTime.value = t
+      u.uGaze.value.copy(gazeRef.current)
+      u.uHeadTilt.value.copy(headTiltRef.current)
+      u.uBlink.value = blinkRef.current
+      u.uBreath.value = breath
+      u.uGlobalAlpha.value = opacityRef.current
+    })
   })
 
-
-
   return (
-    <group scale={[2.0, 2.0, 2.0]} position={[0, -0.5, 0]}>
-      <instancedMesh ref={meshRef} args={[undefined, undefined, count]} frustumCulled={false}>
-        <circleGeometry args={[1, 6]}>
-          <instancedBufferAttribute attach="attributes-aPos" args={[positions, 3]} />
-          <instancedBufferAttribute attach="attributes-aSize" args={[sizes, 1]} />
-          <instancedBufferAttribute attach="attributes-aPulseOffset" args={[pulseOffsets, 1]} />
+    <group ref={groupRef} scale={[2.8, 2.8, 2.8]} position={[0, -0.2, 0]}>
+      {/* SKULL */}
+      <instancedMesh ref={skullMeshRef} args={[undefined, undefined, skullData.count]} frustumCulled={false}>
+        <circleGeometry args={[1, 5]}>
+          <instancedBufferAttribute attach="attributes-aPos" args={[skullPoints, 3]} />
+          <instancedBufferAttribute attach="attributes-aSize" args={[skullData.sizes, 1]} />
+          <instancedBufferAttribute attach="attributes-aPulseOffset" args={[skullData.pulse, 1]} />
         </circleGeometry>
         <shaderMaterial
           vertexShader={vertexShader}
           fragmentShader={fragmentShader}
-          uniforms={particleUniforms}
+          uniforms={skullUniforms}
+          transparent
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </instancedMesh>
+
+      {/* EYES */}
+      <instancedMesh ref={eyeMeshRef} args={[undefined, undefined, eyeData.count]} frustumCulled={false}>
+        <circleGeometry args={[1, 6]}>
+          <instancedBufferAttribute attach="attributes-aPos" args={[eyePoints, 3]} />
+          <instancedBufferAttribute attach="attributes-aSize" args={[eyeData.sizes, 1]} />
+          <instancedBufferAttribute attach="attributes-aPulseOffset" args={[eyeData.pulse, 1]} />
+        </circleGeometry>
+        <shaderMaterial
+          vertexShader={vertexShader}
+          fragmentShader={fragmentShader}
+          uniforms={eyeUniforms}
           transparent
           blending={THREE.AdditiveBlending}
           depthWrite={false}
@@ -238,13 +313,12 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef, scrollDepthRef }: NeuralSc
   )
 }
 
-// ─── Wrapper with event handling ──────────────────────────────────────────────
+// ─── Wrapper with Event Handling ──────────────────────────────────────────────
 
 export const NeuralFace = () => {
   const mouseRef = useRef<[number, number]>([0, 0])
   const idleRef = useRef<number>(Date.now())
   const sectionRef = useRef<string>('hero')
-  const scrollDepthRef = useRef<number>(0)
 
   useEffect(() => {
     const handleMouse = (e: MouseEvent) => {
@@ -254,14 +328,10 @@ export const NeuralFace = () => {
       ]
       idleRef.current = Date.now()
     }
-    const handleScroll = () => {
-      idleRef.current = Date.now()
-      const maxScroll = document.body.scrollHeight - window.innerHeight
-      scrollDepthRef.current = maxScroll > 0 ? window.scrollY / maxScroll : 0
-    }
 
     const sections = ['hero', 'about', 'skills', 'projects', 'achievements', 'contact']
     const observers: IntersectionObserver[] = []
+    
     sections.forEach(id => {
       const el = document.getElementById(id)
       if (!el) return
@@ -274,11 +344,9 @@ export const NeuralFace = () => {
     })
 
     window.addEventListener('mousemove', handleMouse, { passive: true })
-    window.addEventListener('scroll', handleScroll, { passive: true })
 
     return () => {
       window.removeEventListener('mousemove', handleMouse)
-      window.removeEventListener('scroll', handleScroll)
       observers.forEach(o => o.disconnect())
     }
   }, [])
@@ -286,19 +354,18 @@ export const NeuralFace = () => {
   return (
     <div
       className="fixed inset-0 pointer-events-none"
-      style={{ zIndex: 0, opacity: 0.85 }}
+      style={{ zIndex: 0 }}
     >
       <Canvas
         dpr={[1, 1.5]}
         camera={{ position: [0, 0, 4.5], fov: 50 }}
         gl={{ antialias: false, powerPreference: 'high-performance' }}
       >
-        <fog attach="fog" args={['#000', 3, 8]} />
+        <fog attach="fog" args={['#050505', 3, 8]} />
         <NeuralScene
           mouseRef={mouseRef}
           idleRef={idleRef}
           sectionRef={sectionRef}
-          scrollDepthRef={scrollDepthRef}
         />
       </Canvas>
     </div>
