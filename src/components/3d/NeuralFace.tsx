@@ -316,7 +316,6 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef, scrollDepthRef }: NeuralSc
           transparent
           blending={THREE.AdditiveBlending}
           depthWrite={false}
-          sizeAttenuation
         />
       </points>
     </group>
