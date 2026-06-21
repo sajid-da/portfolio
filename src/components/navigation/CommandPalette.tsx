@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Terminal, Search, Folder, User, Mail, Code2, Briefcase, X, Code, Award } from 'lucide-react'
+import { Terminal, Search, Folder, User, X } from 'lucide-react'
+import { FaGithub, FaLinkedin } from 'react-icons/fa'
+import { SiGmail, SiLeetcode, SiCredly } from 'react-icons/si'
 import { useStore } from '../../store/useStore'
 
 const commands = [
   { id: 'projects', name: 'Go to Projects', icon: <Folder size={16} /> },
   { id: 'resume', name: 'Open Resume', icon: <User size={16} /> },
-  { id: 'contact', name: 'Contact Me', icon: <Mail size={16} />, link: 'mailto:ansarisajidofficial@gmail.com' },
-  { id: 'github', name: 'GitHub Profile', icon: <Code2 size={16} />, link: 'https://github.com/sajid-da' },
-  { id: 'linkedin', name: 'LinkedIn Profile', icon: <Briefcase size={16} />, link: 'https://www.linkedin.com/in/sajidzaroon/' },
-  { id: 'leetcode', name: 'LeetCode Profile', icon: <Code size={16} />, link: 'https://leetcode.com/u/W4CqDZs5hX/' },
-  { id: 'credly', name: 'Credly Badges', icon: <Award size={16} />, link: 'https://www.credly.com/users/sajid-ansari.00958aa0' },
+  { id: 'contact', name: 'Contact Me', icon: <SiGmail size={16} />, link: 'https://mail.google.com/mail/?view=cm&fs=1&to=ansarisajidofficial@gmail.com' },
+  { id: 'github', name: 'GitHub Profile', icon: <FaGithub size={16} />, link: 'https://github.com/sajid-da' },
+  { id: 'linkedin', name: 'LinkedIn Profile', icon: <FaLinkedin size={16} />, link: 'https://www.linkedin.com/in/sajidzaroon/' },
+  { id: 'leetcode', name: 'LeetCode Profile', icon: <SiLeetcode size={16} />, link: 'https://leetcode.com/u/W4CqDZs5hX/' },
+  { id: 'credly', name: 'Credly Badges', icon: <SiCredly size={16} />, link: 'https://www.credly.com/users/sajid-ansari.00958aa0' },
   { id: 'terminal', name: 'Open Terminal', icon: <Terminal size={16} /> },
 ]
 

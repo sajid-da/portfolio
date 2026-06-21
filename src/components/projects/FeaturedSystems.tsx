@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ExternalLink, Code2, ChevronRight, X, Activity, Server, Database, Brain } from 'lucide-react'
+import { FaGithub } from 'react-icons/fa'
 
 const caseStudies = {
   'connectaid': {
@@ -48,7 +49,7 @@ export const FeaturedSystems = () => {
                 <ChevronRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
               </button>
               <div className="flex gap-4">
-                <a href="#" className="p-3 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 text-white transition-colors"><Code2 size={20} /></a>
+                <a href="https://github.com/Pranshu-Dev01/ConnectAid" target="_blank" rel="noreferrer" className="p-3 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 text-white transition-colors"><FaGithub size={20} /></a>
                 <a href="#" className="p-3 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 text-white transition-colors"><ExternalLink size={20} /></a>
               </div>
             </div>
@@ -81,7 +82,7 @@ export const FeaturedSystems = () => {
                 <ChevronRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
               </button>
               <div className="flex gap-4">
-                <a href="#" className="p-3 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 text-white transition-colors"><Code2 size={20} /></a>
+                <a href="https://github.com/sajid-da/project-cart-" target="_blank" rel="noreferrer" className="p-3 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 text-white transition-colors"><FaGithub size={20} /></a>
               </div>
             </div>
           </div>

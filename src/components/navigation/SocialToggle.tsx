@@ -1,12 +1,13 @@
-import { Mail, Code2, Briefcase, Code, Award } from 'lucide-react'
+import { FaGithub, FaLinkedin } from 'react-icons/fa'
+import { SiGmail, SiLeetcode, SiCredly } from 'react-icons/si'
 
 export const SocialToggle = () => {
   const socials = [
-    { icon: <Mail size={20} />, link: 'mailto:ansarisajidofficial@gmail.com', name: 'Email' },
-    { icon: <Briefcase size={20} />, link: 'https://www.linkedin.com/in/sajidzaroon/', name: 'LinkedIn' },
-    { icon: <Code2 size={20} />, link: 'https://github.com/sajid-da', name: 'GitHub' },
-    { icon: <Code size={20} />, link: 'https://leetcode.com/u/W4CqDZs5hX/', name: 'LeetCode' },
-    { icon: <Award size={20} />, link: 'https://www.credly.com/users/sajid-ansari.00958aa0', name: 'Credly' },
+    { icon: <SiGmail size={20} />, link: 'https://mail.google.com/mail/?view=cm&fs=1&to=ansarisajidofficial@gmail.com', name: 'Email' },
+    { icon: <FaLinkedin size={20} />, link: 'https://www.linkedin.com/in/sajidzaroon/', name: 'LinkedIn' },
+    { icon: <FaGithub size={20} />, link: 'https://github.com/sajid-da', name: 'GitHub' },
+    { icon: <SiLeetcode size={20} />, link: 'https://leetcode.com/u/W4CqDZs5hX/', name: 'LeetCode' },
+    { icon: <SiCredly size={20} />, link: 'https://www.credly.com/users/sajid-ansari.00958aa0', name: 'Credly' },
   ]
 
   return (

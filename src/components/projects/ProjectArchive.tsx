@@ -1,4 +1,5 @@
-import { ExternalLink, Code2, FlaskConical, BookOpen } from 'lucide-react'
+import { ExternalLink, FlaskConical, BookOpen } from 'lucide-react'
+import { FaGithub } from 'react-icons/fa'
 
 export const ProjectArchive = () => {
   const archive = [
@@ -8,7 +9,7 @@ export const ProjectArchive = () => {
       icon: <BookOpen size={20} className="text-secondary" />,
       desc: 'Real-time emotion classification using deep convolutional neural networks. Achieved 88% accuracy on the FER2013 dataset.',
       tech: ['PyTorch', 'OpenCV', 'Python'],
-      github: '#'
+      github: 'https://github.com/sajid-da/EDL_repo'
     },
     {
       title: 'Portfolio v2',
@@ -48,7 +49,7 @@ export const ProjectArchive = () => {
                 {project.icon}
               </div>
               <div className="flex gap-3">
-                <a href={project.github} className="text-gray-400 hover:text-white transition-colors"><Code2 size={20} /></a>
+                <a href={project.github} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-white transition-colors"><FaGithub size={20} /></a>
                 <a href="#" className="text-gray-500 hover:text-white transition-colors"><ExternalLink size={18} /></a>
               </div>
             </div>

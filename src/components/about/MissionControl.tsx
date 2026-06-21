@@ -1,4 +1,6 @@
 import { Activity, Cloud, Code2, Trophy } from 'lucide-react'
+import { FaUniversity, FaBrain } from 'react-icons/fa'
+import { SiGooglecloud, SiCoursera, SiIbm } from 'react-icons/si'
 
 export const MissionControl = () => {
   return (
@@ -48,11 +50,11 @@ export const MissionControl = () => {
       
       {/* Social Proof */}
       <div className="pt-12 border-t border-white/10 flex flex-wrap justify-center items-center gap-x-12 gap-y-8 opacity-40 hover:opacity-100 transition-opacity duration-700">
-        <span className="font-black text-2xl tracking-tight text-white hover:text-white transition-colors">JAIN UNIVERSITY</span>
-        <span className="font-bold text-xl tracking-widest uppercase text-white hover:text-blue-400 transition-colors">Google Cloud</span>
-        <span className="font-bold text-xl tracking-widest uppercase text-white hover:text-blue-600 transition-colors">Coursera</span>
-        <span className="font-bold text-xl tracking-widest uppercase text-white hover:text-purple-500 transition-colors">DeepLearning.AI</span>
-        <span className="font-black text-2xl tracking-tighter text-white hover:text-blue-800 transition-colors">IBM</span>
+        <span className="flex items-center gap-2 font-black text-2xl tracking-tight text-white hover:text-white transition-colors"><FaUniversity /> JAIN UNIVERSITY</span>
+        <span className="flex items-center gap-2 font-bold text-xl tracking-widest uppercase text-white hover:text-blue-400 transition-colors"><SiGooglecloud /> Google Cloud</span>
+        <span className="flex items-center gap-2 font-bold text-xl tracking-widest uppercase text-white hover:text-blue-600 transition-colors"><SiCoursera /> Coursera</span>
+        <span className="flex items-center gap-2 font-bold text-xl tracking-widest uppercase text-white hover:text-purple-500 transition-colors"><FaBrain /> DeepLearning.AI</span>
+        <span className="flex items-center gap-2 font-black text-2xl tracking-tighter text-white hover:text-blue-800 transition-colors"><SiIbm /> IBM</span>
       </div>
     </section>
   )
