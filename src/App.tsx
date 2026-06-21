@@ -1,4 +1,4 @@
-
+import { useState } from 'react'
 import { MainLayout } from './components/layout/MainLayout'
 import { useStore } from './store/useStore'
 import { ResumeCenter } from './components/resume/ResumeCenter'
@@ -6,16 +6,30 @@ import { FeaturedSystems } from './components/projects/FeaturedSystems'
 import { ProjectArchive } from './components/projects/ProjectArchive'
 
 import { MissionControl } from './components/about/MissionControl'
+import { CurrentOperations } from './components/about/CurrentOperations'
+import { LeadershipProtocol } from './components/about/LeadershipProtocol'
+import { AboutCore } from './components/about/AboutCore'
 import { ExperienceTimeline } from './components/about/ExperienceTimeline'
+
+import { AchievementsVault } from './components/achievements/AchievementsVault'
+import { CertificationHall } from './components/achievements/CertificationHall'
+
 import { SmoothScroll } from './components/layout/SmoothScroll'
+import { BootSequence } from './components/layout/BootSequence'
 
 import { HeroScene } from './components/3d/HeroScene'
 import { SkillsGalaxy } from './components/3d/SkillsGalaxy'
 import { ContactCore } from './components/3d/ContactCore'
 import { NeuralFace } from './components/3d/NeuralFace'
+import { InteractiveTerminal } from './components/terminal/InteractiveTerminal'
 
 function App() {
   const { isRecruiterMode } = useStore()
+  const [isBooted, setIsBooted] = useState(false)
+
+  if (!isBooted && !isRecruiterMode) {
+    return <BootSequence onComplete={() => setIsBooted(true)} />
+  }
 
   return (
     <SmoothScroll>
@@ -23,7 +37,6 @@ function App() {
         {!isRecruiterMode && <NeuralFace />}
         {isRecruiterMode ? (
           <div className="max-w-4xl mx-auto px-6 py-16">
-            {/* ... Recruiter Mode ... */}
             <header className="mb-16">
               <h1 className="text-5xl font-extrabold text-gray-900 tracking-tight mb-4">Sajid Ansari</h1>
               <p className="text-xl text-gray-600 mb-6 font-medium">Designing intelligent systems that bridge machine learning and real-world impact.</p>
@@ -60,10 +73,21 @@ function App() {
             
             <HeroScene />
             <MissionControl />
+            <CurrentOperations />
+            <LeadershipProtocol />
+            <AboutCore />
             <SkillsGalaxy />
             <FeaturedSystems />
             <ProjectArchive />
             <ExperienceTimeline />
+            <AchievementsVault />
+            <CertificationHall />
+            <ResumeCenter />
+            
+            <div className="w-full max-w-5xl mx-auto py-24 px-6">
+              <InteractiveTerminal />
+            </div>
+            
             <ContactCore />
           </div>
         )}

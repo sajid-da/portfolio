@@ -12,8 +12,6 @@ export const InteractiveTerminal = () => {
       command: '',
       output: (
         <div className="text-primary font-mono mb-4 md:text-lg">
-          <div className="font-black tracking-widest mb-2 text-xl md:text-3xl text-white">SAJID.OS v3.0</div>
-          <div className="text-gray-400 mb-4 tracking-wider">AI Engineer & Full-Stack Systems Architect</div>
           <div className="text-green-400">System Online. Type 'help' to see available commands.</div>
         </div>
       )
@@ -51,13 +49,13 @@ export const InteractiveTerminal = () => {
         )
         break
       case 'whoami':
-        output = 'Sajid Ansari - AI Engineer & Full Stack Developer.\nDesigning intelligent systems that bridge machine learning and real-world impact.\nBased in Bengaluru, India.'
+        output = 'Sajid Ansari\nAI & ML Engineer\nJain University\nCGPA 8.5'
         break
       case 'skills':
-        output = 'Python, TensorFlow, PyTorch, OpenCV, React, Next.js, Node.js, Express, FastAPI, Docker, Google Cloud.'
+        output = 'AI & Machine Learning\nBackend Development\nFrontend Development\nCloud Engineering\nComputer Vision'
         break
       case 'projects':
-        output = '1. ConnectAid AI (VIBEathon Top 3)\n2. SmartCart (Automated Retail)\n3. Facial Expression Recognition (Research)'
+        output = 'ConnectAid AI\nSmartCart\nFacial Expression Recognition\nResearch Projects'
         break
       case 'resume':
         output = (
@@ -70,16 +68,10 @@ export const InteractiveTerminal = () => {
         output = 'Top 3 Hackathon Winner (VIBEathon)\n42 Google Cloud Badges\n100+ LeetCode problems solved\nCGPA: 8.5'
         break
       case 'contact':
-        output = 'Email: ansarisajidofficial@gmail.com\nLinkedIn: linkedin.com/in/sajidzaroon\nGitHub: github.com/sajid-da\nLeetCode: leetcode.com/u/W4CqDZs5hX\nCredly: credly.com/users/sajid-ansari.00958aa0\nResponse time: < 24 hours'
+        output = 'Email\nGitHub\nLinkedIn\nLeetCode'
         break
       case 'hackathon':
-        output = (
-          <div className="text-gray-300 italic border-l-2 border-primary pl-4 my-2">
-            "We had 36 hours. The problem: emergency responders were losing critical time manually locating facilities during disasters. 
-            We built ConnectAid AI using Gemini and React to automate real-time routing. Sleep deprived but fueled by caffeine, 
-            we achieved 95% location accuracy and secured a Top 3 finish at VIBEathon. It was a testament to rapid system design."
-          </div>
-        )
+        output = 'VIBEathon\n\nTop 3 Team\n\n1500 Teams\n\n20000+ Participants\n\nProject:\nConnectAid AI'
         break
       case 'clear':
         setHistory([])

@@ -1,20 +1,56 @@
 import { useState } from 'react'
-import { ExternalLink, ChevronRight, X, Activity, Server, Database, Brain } from 'lucide-react'
+import { ExternalLink, ChevronRight, X, ArrowDown } from 'lucide-react'
 import { FaGithub } from 'react-icons/fa'
 
 const caseStudies = {
   'connectaid': {
     title: 'ConnectAid AI',
-    problem: 'During natural disasters, emergency responders lose critical time manually locating facilities and routing vehicles through blocked paths.',
+    overview: 'AI-powered emergency assistance platform developed during VIBEathon.',
+    problem: 'Emergency situations often require rapid identification of nearby facilities and support resources, but responders lose critical time manually locating them.',
     constraints: 'Built entirely within a 36-hour hackathon timeframe. Required real-time data processing and a highly intuitive interface for high-stress situations.',
-    architecture: [
-      { node: 'User Interface', desc: 'React Dashboard', icon: <Activity size={20} /> },
-      { node: 'API Gateway', desc: 'Node.js Express', icon: <Server size={20} /> },
-      { node: 'Intelligence', desc: 'Gemini Voice Analysis', icon: <Brain size={20} /> },
-      { node: 'Data', desc: 'Real-time routing DB', icon: <Database size={20} /> },
-    ],
-    result: 'Achieved 95% location accuracy and 90% faster facility discovery, securing a Top 3 finish at VIBEathon.',
+    architecture: ['User', 'React Frontend', 'Node.js Backend', 'Gemini AI', 'Maps API', 'Results'],
+    implementation: 'Leveraged Gemini for NLP voice analysis to extract emergency contexts, paired with Google Maps API for dynamic real-time routing. The frontend was built with React for instant feedback.',
+    challenges: 'Integrating voice-to-text in a noisy environment and ensuring the routing algorithm could handle rapid re-calculations without crashing the Node.js server.',
+    result: 'Achieved 95% location accuracy and 90% faster facility discovery, securing a Top 3 finish among 1500 teams.',
+    lessons: 'Rapid system design requires rigid scoping. Relying on managed AI APIs (like Gemini) drastically accelerated our time-to-MVP compared to training custom models.',
+    link: 'https://github.com/Pranshu-Dev01/ConnectAid',
+    theme: 'primary'
+  },
+  'smartcart': {
+    title: 'SmartCart',
+    overview: 'AI-powered automated checkout and inventory management system.',
+    problem: 'Traditional checkout systems increase wait times and reduce inventory visibility in retail environments.',
+    constraints: 'Must operate in real-time on edge devices with limited computing power while maintaining high accuracy.',
+    architecture: ['Camera', 'OpenCV', 'TensorFlow Model', 'FastAPI', 'Checkout Engine'],
+    implementation: 'Trained a custom object detection model using TensorFlow, deployed via a lightweight FastAPI backend. OpenCV handled the live camera feed and bounding box generation.',
+    challenges: 'Model inference speed was initially too slow for live video. We had to optimize the TensorFlow model via quantization to achieve a stable FPS on edge hardware.',
+    result: '92% Recognition Accuracy, 40% Faster Checkout, and a 96/100 Academic Evaluation. Research paper submitted based on findings.',
+    lessons: 'Hardware constraints dictate software architecture. Edge computing requires hyper-optimized models, and Python/FastAPI is incredibly effective for serving ML inference.',
+    link: 'https://github.com/sajid-da/project-cart-',
+    theme: 'secondary'
   }
+}
+
+const ArchitectureFlow = ({ nodes, theme }: { nodes: string[], theme: string }) => {
+  const color = theme === 'primary' ? 'text-primary border-primary/50 shadow-[0_0_15px_rgba(0,212,255,0.2)]' : 'text-secondary border-secondary/50 shadow-[0_0_15px_rgba(139,92,246,0.2)]'
+  const arrowColor = theme === 'primary' ? 'text-primary/50' : 'text-secondary/50'
+
+  return (
+    <div className="flex flex-col items-center py-8">
+      {nodes.map((node, idx) => (
+        <div key={idx} className="flex flex-col items-center">
+          <div className={`px-6 py-3 border rounded-xl font-bold bg-black/50 backdrop-blur-md ${color} animate-in fade-in slide-in-from-top-4`} style={{ animationDelay: `${idx * 150}ms`, animationFillMode: 'both' }}>
+            {node}
+          </div>
+          {idx < nodes.length - 1 && (
+            <div className={`my-3 animate-bounce ${arrowColor}`}>
+              <ArrowDown size={24} />
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
 }
 
 export const FeaturedSystems = () => {
@@ -33,7 +69,7 @@ export const FeaturedSystems = () => {
           <div className="w-full lg:w-1/2 relative z-10">
             <h3 className="text-3xl md:text-5xl font-bold text-white mb-6">ConnectAid AI</h3>
             <p className="text-xl text-gray-400 mb-8 leading-relaxed">
-              An intelligent emergency response command center. It features real-time dynamic routing and AI-driven voice analysis to drastically reduce response times during crises.
+              AI-powered emergency assistance platform developed during VIBEathon.
             </p>
             <div className="flex flex-wrap gap-3 mb-10">
               <span className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg font-mono text-sm text-primary">React</span>
@@ -45,12 +81,11 @@ export const FeaturedSystems = () => {
                 onClick={() => setActiveCaseStudy('connectaid')}
                 className="group/btn flex items-center gap-3 px-6 py-3 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition-colors"
               >
-                Behind the Build
+                Case Study
                 <ChevronRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
               </button>
               <div className="flex gap-4">
                 <a href="https://github.com/Pranshu-Dev01/ConnectAid" target="_blank" rel="noreferrer" className="p-3 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 text-white transition-colors"><FaGithub size={20} /></a>
-                <a href="#" className="p-3 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 text-white transition-colors"><ExternalLink size={20} /></a>
               </div>
             </div>
           </div>
@@ -69,7 +104,7 @@ export const FeaturedSystems = () => {
           <div className="w-full lg:w-1/2 relative z-10 lg:pl-12">
             <h3 className="text-3xl md:text-5xl font-bold text-white mb-6">SmartCart</h3>
             <p className="text-xl text-gray-400 mb-8 leading-relaxed">
-              A futuristic automated retail store system utilizing live AI product scanning via bounding boxes, eliminating the need for traditional checkouts.
+              AI-powered automated checkout and inventory management system using computer vision.
             </p>
             <div className="flex flex-wrap gap-3 mb-10">
               <span className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg font-mono text-sm text-secondary">TensorFlow</span>
@@ -77,8 +112,11 @@ export const FeaturedSystems = () => {
               <span className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg font-mono text-sm text-secondary">FastAPI</span>
             </div>
             <div className="flex flex-wrap items-center gap-4 lg:gap-6">
-              <button className="group/btn flex items-center gap-3 px-6 py-3 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition-colors">
-                Behind the Build
+              <button 
+                onClick={() => setActiveCaseStudy('smartcart')}
+                className="group/btn flex items-center gap-3 px-6 py-3 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition-colors"
+              >
+                Case Study
                 <ChevronRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
               </button>
               <div className="flex gap-4">
@@ -102,58 +140,85 @@ export const FeaturedSystems = () => {
 
       {/* Case Study Modal */}
       {activeCaseStudy && caseStudies[activeCaseStudy as keyof typeof caseStudies] && (
-        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
-          <div className="bg-[#0a0a0a] border border-white/10 w-full max-w-5xl h-[90vh] rounded-2xl shadow-2xl flex flex-col relative overflow-hidden">
-            <button 
-              onClick={() => setActiveCaseStudy(null)}
-              className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white z-10 transition-colors"
-            >
-              <X size={24} />
-            </button>
+        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-0 md:p-8 animate-in fade-in duration-300">
+          <div className="bg-[#050505] md:border border-white/10 w-full max-w-6xl h-full md:h-[90vh] md:rounded-2xl shadow-2xl flex flex-col relative overflow-hidden">
             
-            <div className="flex-1 overflow-y-auto p-6 md:p-16">
-              <h4 className="text-primary font-mono tracking-widest text-sm mb-4">BEHIND THE BUILD</h4>
-              <h2 className="text-4xl md:text-6xl font-black text-white mb-16">{caseStudies[activeCaseStudy as keyof typeof caseStudies].title}</h2>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
-                <div>
-                  <div className="mb-12">
-                    <h5 className="text-2xl font-bold text-white mb-4">Problem</h5>
-                    <p className="text-gray-400 leading-relaxed text-lg">{caseStudies[activeCaseStudy as keyof typeof caseStudies].problem}</p>
-                  </div>
+            {/* Header */}
+            <div className="border-b border-white/10 p-6 md:p-8 flex justify-between items-center bg-black/50 backdrop-blur-md sticky top-0 z-20">
+              <div>
+                <h4 className="text-gray-500 font-mono tracking-widest text-xs mb-2 uppercase">Systems Case Study</h4>
+                <h2 className={`text-2xl md:text-4xl font-black ${caseStudies[activeCaseStudy as keyof typeof caseStudies].theme === 'primary' ? 'text-primary' : 'text-secondary'}`}>
+                  {caseStudies[activeCaseStudy as keyof typeof caseStudies].title}
+                </h2>
+              </div>
+              <div className="flex gap-4">
+                <a href={caseStudies[activeCaseStudy as keyof typeof caseStudies].link} target="_blank" rel="noreferrer" className="hidden md:flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-white text-sm font-bold transition-colors">
+                  <FaGithub size={16} /> Repository
+                </a>
+                <button 
+                  onClick={() => setActiveCaseStudy(null)}
+                  className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+            
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-6 md:p-12">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 max-w-5xl mx-auto">
+                
+                {/* Left Column: Text Data */}
+                <div className="lg:col-span-8 space-y-12">
+                  <section>
+                    <h5 className="text-sm font-mono text-gray-500 tracking-widest mb-4 border-b border-white/10 pb-2 uppercase">Overview</h5>
+                    <p className="text-white text-xl leading-relaxed">{caseStudies[activeCaseStudy as keyof typeof caseStudies].overview}</p>
+                  </section>
                   
-                  <div className="mb-12">
-                    <h5 className="text-2xl font-bold text-white mb-4">Constraints</h5>
-                    <p className="text-gray-400 leading-relaxed text-lg">{caseStudies[activeCaseStudy as keyof typeof caseStudies].constraints}</p>
-                  </div>
-                  
-                  <div>
-                    <h5 className="text-2xl font-bold text-white mb-4">Result</h5>
-                    <div className="p-6 bg-primary/5 border border-primary/20 rounded-xl">
-                      <p className="text-primary font-medium text-lg">{caseStudies[activeCaseStudy as keyof typeof caseStudies].result}</p>
-                    </div>
-                  </div>
+                  <section>
+                    <h5 className="text-sm font-mono text-gray-500 tracking-widest mb-4 border-b border-white/10 pb-2 uppercase">The Problem</h5>
+                    <p className="text-gray-300 text-lg leading-relaxed">{caseStudies[activeCaseStudy as keyof typeof caseStudies].problem}</p>
+                  </section>
+
+                  <section>
+                    <h5 className="text-sm font-mono text-gray-500 tracking-widest mb-4 border-b border-white/10 pb-2 uppercase">Constraints</h5>
+                    <p className="text-gray-300 text-lg leading-relaxed">{caseStudies[activeCaseStudy as keyof typeof caseStudies].constraints}</p>
+                  </section>
+
+                  <section>
+                    <h5 className="text-sm font-mono text-gray-500 tracking-widest mb-4 border-b border-white/10 pb-2 uppercase">Implementation</h5>
+                    <p className="text-gray-300 text-lg leading-relaxed">{caseStudies[activeCaseStudy as keyof typeof caseStudies].implementation}</p>
+                  </section>
+
+                  <section>
+                    <h5 className="text-sm font-mono text-gray-500 tracking-widest mb-4 border-b border-white/10 pb-2 uppercase">Challenges</h5>
+                    <p className="text-gray-300 text-lg leading-relaxed">{caseStudies[activeCaseStudy as keyof typeof caseStudies].challenges}</p>
+                  </section>
+
+                  <section>
+                    <h5 className="text-sm font-mono text-gray-500 tracking-widest mb-4 border-b border-white/10 pb-2 uppercase">Lessons Learned</h5>
+                    <p className="text-gray-300 text-lg leading-relaxed">{caseStudies[activeCaseStudy as keyof typeof caseStudies].lessons}</p>
+                  </section>
                 </div>
                 
-                <div>
-                  <h5 className="text-2xl font-bold text-white mb-8">Architecture</h5>
-                  <div className="space-y-4">
-                    {caseStudies[activeCaseStudy as keyof typeof caseStudies].architecture.map((item, idx) => (
-                      <div key={idx} className="group relative flex items-center gap-6 p-4 bg-white/5 border border-white/10 rounded-xl hover:border-primary/50 transition-colors">
-                        <div className="w-12 h-12 bg-black rounded-lg border border-white/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(0,212,255,0)] group-hover:shadow-[0_0_15px_rgba(0,212,255,0.3)]">
-                          {item.icon}
-                        </div>
-                        <div>
-                          <div className="font-bold text-white text-lg">{item.node}</div>
-                          <div className="text-gray-500 font-mono text-sm">{item.desc}</div>
-                        </div>
-                        {idx !== caseStudies[activeCaseStudy as keyof typeof caseStudies].architecture.length - 1 && (
-                          <div className="absolute left-[39px] bottom-[-20px] w-0.5 h-4 bg-white/10"></div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                {/* Right Column: Architecture & Results */}
+                <div className="lg:col-span-4 space-y-12">
+                  <section className="bg-white/5 p-6 rounded-2xl border border-white/10">
+                    <h5 className="text-sm font-mono text-gray-500 tracking-widest mb-6 uppercase text-center">Architecture Flow</h5>
+                    <ArchitectureFlow 
+                      nodes={caseStudies[activeCaseStudy as keyof typeof caseStudies].architecture} 
+                      theme={caseStudies[activeCaseStudy as keyof typeof caseStudies].theme} 
+                    />
+                  </section>
+
+                  <section className="bg-white/5 p-6 rounded-2xl border border-white/10">
+                    <h5 className="text-sm font-mono text-gray-500 tracking-widest mb-4 uppercase">Key Results</h5>
+                    <div className={`p-4 rounded-xl border font-bold text-lg leading-relaxed ${caseStudies[activeCaseStudy as keyof typeof caseStudies].theme === 'primary' ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-secondary/10 border-secondary/30 text-secondary'}`}>
+                      {caseStudies[activeCaseStudy as keyof typeof caseStudies].result}
+                    </div>
+                  </section>
                 </div>
+                
               </div>
             </div>
           </div>
