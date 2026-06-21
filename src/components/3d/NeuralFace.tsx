@@ -1,29 +1,20 @@
-import { useRef, useEffect, useMemo, useCallback } from 'react'
+import { useRef, useEffect, useMemo } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { skullPoints, eyePoints, eyeTypes } from './faceVertices'
+import { faceVertices, faceLines, facePoints } from './faceVertices'
 
-// ─── Shader Source ────────────────────────────────────────────────────────────
+// ─── Shaders ─────────────────────────────────────────────────────────────────
 
-const vertexShader = `
+const commonVertexFunctions = `
   uniform float uTime;
   uniform vec2  uGaze;
   uniform vec2  uHeadTilt;
-  uniform float uBlink;
   uniform float uBreath;
   uniform vec3  uBaseColor;
   uniform vec3  uHighlightColor;
-  uniform float uIsEyeMesh;
-
-  attribute vec3  aPos;
-  attribute float aSize;
-  attribute float aPulseOffset;
-  attribute float aType; // 0.0 = Iris, 1.0 = Orbit (Only for eyes)
 
   varying vec3  vColor;
   varying float vAlpha;
-  varying float vType;
-  varying vec2  vPointCoord;
 
   // Rotation matrix around Y and X axes for head tilt
   mat3 rotationMatrix(vec2 tilt) {
@@ -44,117 +35,111 @@ const vertexShader = `
     );
     return ry * rx;
   }
+`;
 
-  // Rotation around Z for eye orbit
-  mat3 rotationZ(float angle) {
-    float c = cos(angle);
-    float s = sin(angle);
-    return mat3(
-      c, -s, 0.0,
-      s,  c, 0.0,
-      0.0, 0.0, 1.0
-    );
-  }
-
+// LINE SHADER
+const lineVertexShader = `
+  ${commonVertexFunctions}
   void main() {
-    vec3 p = aPos;
-    vType = uIsEyeMesh > 0.5 ? aType : -1.0;
+    vec3 p = position;
 
-    // ── Breathing: subtle scale oscillation ──
-    float breathScale = 1.0 + uBreath * 0.015;
-    p *= breathScale;
+    // Breathing expansion
+    p *= (1.0 + uBreath * 0.005);
 
-    if (uIsEyeMesh > 0.5) {
-      // ── Separate Eye Center Logic ──
-      // Assume left eye center is x < 0, right is x > 0
-      vec3 eyeCenter = vec3(sign(p.x) * 0.18, 0.12, 0.45);
-      
-      // Orbit particles rotate around the eye center
-      if (vType > 0.5) {
-        vec3 local = p - eyeCenter;
-        local = rotationZ(uTime * 0.5 + aPulseOffset) * local;
-        p = eyeCenter + local;
-      }
+    // Expressive Gaze Deform: eye sockets shift to track cursor
+    vec3 eyeLeft = vec3(-0.18, 0.12, 0.45);
+    vec3 eyeRight = vec3(0.18, 0.12, 0.45);
+    
+    float distL = length(p - eyeLeft);
+    float distR = length(p - eyeRight);
+    
+    // Shift points near the eyes heavily towards the gaze direction
+    float eyeMask = smoothstep(0.3, 0.0, min(distL, distR));
+    p.xy += uGaze * eyeMask * 0.08; 
 
-      // ── Physical Spheroid Gaze Tracking ──
-      // Rotate the eyes toward the cursor instead of just sliding them
-      mat3 gazeRot = rotationMatrix(uGaze * 0.6); // Eyes rotate further
-      p = eyeCenter + gazeRot * (p - eyeCenter);
-
-      // ── Blink: collapse eye particles vertically ──
-      float blinkMask = smoothstep(0.15, 0.0, abs(p.y - 0.12));
-      p.y -= blinkMask * uBlink * 0.06;
-    }
-
-    // ── Head Tilt (applies to everything, including eyes after local transforms) ──
+    // Global Head Tilt (subtle 3-5 degrees)
     p = rotationMatrix(uHeadTilt) * p;
 
-    // ── Neural pulse wave ──
+    // Neural Pulse
     float dist = length(p);
-    float pulse = sin(dist * 10.0 - uTime * 4.0 + aPulseOffset) * 0.5 + 0.5;
+    float pulse = sin(dist * 8.0 - uTime * 3.0) * 0.5 + 0.5;
 
-    // ── Size Calculation ──
-    float s = aSize * (1.0 + pulse * 0.5) * 0.003;
-    if (uIsEyeMesh > 0.5) {
-      if (vType < 0.5) {
-        s *= 1.2; // Iris particles are dense but small
-      } else {
-        s *= 0.8; // Orbit particles are faint
-      }
-    }
-
-    vec3 finalPos = p + position * s;
-    vec4 mvPos = modelViewMatrix * vec4(finalPos, 1.0);
+    vec4 mvPos = modelViewMatrix * vec4(p, 1.0);
     gl_Position = projectionMatrix * mvPos;
 
-    // ── Color ──
-    float glow = 0.5 + pulse * 0.5;
-    if (uIsEyeMesh > 0.5) {
-      if (vType < 0.5) {
-        // Iris: Dense Cyan Ring
-        vColor = uBaseColor;
-        vAlpha = 1.0;
-      } else {
-        // Orbit: Rotating faint particles
-        vColor = uHighlightColor;
-        vAlpha = 0.4 + pulse * 0.4;
-      }
-    } else {
-      // Skull: Muted cyan/purple network, pushed slightly back to be atmospheric
-      vColor = mix(uBaseColor, uHighlightColor, pulse * 0.6);
-      vAlpha = 0.15 + pulse * 0.2; // Highly reduced opacity for skull
-    }
+    // Lines are subtle
+    vColor = mix(uBaseColor, uHighlightColor, pulse * 0.5);
+    vAlpha = 0.15 + pulse * 0.15;
   }
-`
+`;
 
-const fragmentShader = `
+const lineFragmentShader = `
   uniform float uGlobalAlpha;
   varying vec3  vColor;
   varying float vAlpha;
-  varying float vType;
-
   void main() {
-    // Render soft circles instead of hard disks for everything
-    // But for the Iris (vType < 0.5), we can make them sharper
-    // Since we use instanced mesh with circle geometry, the shape is already circular.
-    // We just apply a soft glow based on fragment coordinate distance if we want, but base geometry is fine.
+    gl_FragColor = vec4(vColor, vAlpha * uGlobalAlpha);
+  }
+`;
+
+// POINT SHADER
+const pointVertexShader = `
+  ${commonVertexFunctions}
+  attribute float aPulseOffset;
+  void main() {
+    vec3 p = position;
+
+    p *= (1.0 + uBreath * 0.005);
+
+    vec3 eyeLeft = vec3(-0.18, 0.12, 0.45);
+    vec3 eyeRight = vec3(0.18, 0.12, 0.45);
+    float distL = length(p - eyeLeft);
+    float distR = length(p - eyeRight);
     
-    float alpha = vAlpha * uGlobalAlpha;
+    float eyeMask = smoothstep(0.3, 0.0, min(distL, distR));
+    p.xy += uGaze * eyeMask * 0.08; 
+
+    p = rotationMatrix(uHeadTilt) * p;
+
+    float dist = length(p);
+    float pulse = sin(dist * 12.0 - uTime * 4.0 + aPulseOffset) * 0.5 + 0.5;
+
+    vec4 mvPos = modelViewMatrix * vec4(p, 1.0);
+    gl_Position = projectionMatrix * mvPos;
+    
+    // Size changes based on distance (closer = bigger)
+    gl_PointSize = (3.0 + pulse * 2.0) * (1.0 / -mvPos.z);
+
+    // Points are brighter nodes
+    vColor = mix(uBaseColor, vec3(1.0, 1.0, 1.0), pulse * 0.8);
+    vAlpha = 0.4 + pulse * 0.6;
+  }
+`;
+
+const pointFragmentShader = `
+  uniform float uGlobalAlpha;
+  varying vec3  vColor;
+  varying float vAlpha;
+  void main() {
+    float d = length(gl_PointCoord - vec2(0.5));
+    if (d > 0.5) discard;
+    
+    // Soft circle
+    float alpha = vAlpha * (1.0 - smoothstep(0.3, 0.5, d)) * uGlobalAlpha;
     gl_FragColor = vec4(vColor, alpha);
   }
-`
+`;
 
 // ─── Section Configuration ────────────────────────────────────────────────────
 
-// The face is now scaled down significantly and pushed extreme right for content
 const SECTION_STATES: Record<string, { opacity: number; xOffset: number }> = {
-  hero:         { opacity: 1.0, xOffset: 0.0 },     // Centered
-  about:        { opacity: 1.0, xOffset: 2.8 },     // Mission Control
-  'about-core': { opacity: 0.8, xOffset: 2.8 },     // About Core
-  skills:       { opacity: 0.6, xOffset: 2.8 },     // Skills Galaxy
-  projects:     { opacity: 0.6, xOffset: 2.8 },     // Featured Systems
-  achievements: { opacity: 0.4, xOffset: 2.8 },     // Achievements & Certs
-  contact:      { opacity: 1.0, xOffset: 0.0 },     // Contact (Centered)
+  hero:         { opacity: 1.0, xOffset: 0.0 },
+  about:        { opacity: 1.0, xOffset: 2.8 },
+  'about-core': { opacity: 0.8, xOffset: 2.8 },
+  skills:       { opacity: 0.6, xOffset: 2.8 },
+  projects:     { opacity: 0.6, xOffset: 2.8 },
+  achievements: { opacity: 0.4, xOffset: 2.8 },
+  contact:      { opacity: 1.0, xOffset: 0.0 },
 }
 
 // ─── Main 3D Scene ────────────────────────────────────────────────────────────
@@ -166,8 +151,6 @@ interface NeuralSceneProps {
 }
 
 const NeuralScene = ({ mouseRef, idleRef, sectionRef }: NeuralSceneProps) => {
-  const skullMeshRef = useRef<THREE.InstancedMesh>(null)
-  const eyeMeshRef = useRef<THREE.InstancedMesh>(null)
   const groupRef = useRef<THREE.Group>(null)
 
   const gazeRef = useRef(new THREE.Vector2(0, 0))
@@ -175,134 +158,77 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef }: NeuralSceneProps) => {
   const headTiltRef = useRef(new THREE.Vector2(0, 0))
   const headTiltTargetRef = useRef(new THREE.Vector2(0, 0))
   
-  const blinkRef = useRef(0)
-  const nextBlinkRef = useRef(Date.now() + 5000 + Math.random() * 8000)
-  const blinkingRef = useRef(false)
-
   const opacityRef = useRef(1.0)
   const xOffsetRef = useRef(0.0)
 
-  // ── Setup Instanced Data ──
-  const { skullData, eyeData } = useMemo(() => {
-    // SKULL
-    const sCount = skullPoints.length / 3
-    const sSizes = new Float32Array(sCount)
-    const sPulse = new Float32Array(sCount)
-    for (let i = 0; i < sCount; i++) {
-      sSizes[i] = 0.5 + Math.random() * 1.5 // Smaller particles for skull
-      sPulse[i] = Math.random() * Math.PI * 2
+  // ── Setup Geometries ──
+  const { lineGeometry, pointGeometry } = useMemo(() => {
+    const lGeo = new THREE.BufferGeometry()
+    lGeo.setAttribute('position', new THREE.BufferAttribute(faceVertices, 3))
+    lGeo.setIndex(new THREE.BufferAttribute(faceLines, 1))
+
+    // For points, we need to extract only the used vertices so we don't render floating un-connected nodes
+    const pCount = facePoints.length
+    const pPos = new Float32Array(pCount * 3)
+    const pPulse = new Float32Array(pCount)
+    
+    for (let i = 0; i < pCount; i++) {
+      const vIdx = facePoints[i]
+      pPos[i*3] = faceVertices[vIdx*3]
+      pPos[i*3+1] = faceVertices[vIdx*3+1]
+      pPos[i*3+2] = faceVertices[vIdx*3+2]
+      pPulse[i] = Math.random() * Math.PI * 2
     }
 
-    // EYES
-    const eCount = eyePoints.length / 3
-    const eSizes = new Float32Array(eCount)
-    const ePulse = new Float32Array(eCount)
-    for (let i = 0; i < eCount; i++) {
-      eSizes[i] = 1.0 + Math.random() * 1.5
-      ePulse[i] = Math.random() * Math.PI * 2
-    }
+    const pGeo = new THREE.BufferGeometry()
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3))
+    pGeo.setAttribute('aPulseOffset', new THREE.BufferAttribute(pPulse, 1))
 
-    return {
-      skullData: { count: sCount, sizes: sSizes, pulse: sPulse },
-      eyeData: { count: eCount, sizes: eSizes, pulse: ePulse }
-    }
+    return { lineGeometry: lGeo, pointGeometry: pGeo }
   }, [])
 
-  const skullUniforms = useMemo(() => ({
+  const uniforms = useMemo(() => ({
     uTime:           { value: 0 },
     uGaze:           { value: new THREE.Vector2(0, 0) },
     uHeadTilt:       { value: new THREE.Vector2(0, 0) },
-    uBlink:          { value: 0 },
     uBreath:         { value: 0 },
-    uIsEyeMesh:      { value: 0.0 },
     uBaseColor:      { value: new THREE.Color('#00D4FF') }, // Cyan
     uHighlightColor: { value: new THREE.Color('#8B5CF6') }, // Purple
     uGlobalAlpha:    { value: 1.0 }
   }), [])
-
-  const eyeUniforms = useMemo(() => ({
-    uTime:           { value: 0 },
-    uGaze:           { value: new THREE.Vector2(0, 0) },
-    uHeadTilt:       { value: new THREE.Vector2(0, 0) },
-    uBlink:          { value: 0 },
-    uBreath:         { value: 0 },
-    uIsEyeMesh:      { value: 1.0 },
-    uBaseColor:      { value: new THREE.Color('#00FFFF') }, // Intense Cyan Iris
-    uHighlightColor: { value: new THREE.Color('#FFFFFF') }, // White Orbit
-    uGlobalAlpha:    { value: 1.0 }
-  }), [])
-
-  const doBlink = useCallback(async () => {
-    if (blinkingRef.current) return
-    blinkingRef.current = true
-    const steps = 6
-    for (let i = 0; i <= steps; i++) {
-      blinkRef.current = i < steps / 2 ? i / (steps / 2) : 1 - (i - steps / 2) / (steps / 2)
-      await new Promise(r => setTimeout(r, 16))
-    }
-    blinkRef.current = 0
-    blinkingRef.current = false
-    nextBlinkRef.current = Date.now() + 4000 + Math.random() * 8000
-  }, [])
-
-  // Initialize instance matrices
-  useEffect(() => {
-    const dummy = new THREE.Object3D()
-    if (skullMeshRef.current) {
-      for (let i = 0; i < skullData.count; i++) {
-        dummy.updateMatrix()
-        skullMeshRef.current.setMatrixAt(i, dummy.matrix)
-      }
-      skullMeshRef.current.instanceMatrix.needsUpdate = true
-    }
-    if (eyeMeshRef.current) {
-      for (let i = 0; i < eyeData.count; i++) {
-        dummy.updateMatrix()
-        eyeMeshRef.current.setMatrixAt(i, dummy.matrix)
-      }
-      eyeMeshRef.current.instanceMatrix.needsUpdate = true
-    }
-  }, [skullData.count, eyeData.count])
 
   useFrame((state) => {
     const t = state.clock.elapsedTime
     const idleSec = (Date.now() - idleRef.current) / 1000
     const section = sectionRef.current || 'hero'
     
-    // Map terminal section to Resume opacity rules
     let effectiveSection = section;
     if (section === 'terminal') {
-        effectiveSection = 'achievements'; // Will handle 15% override below
+        effectiveSection = 'achievements'; 
     }
 
     const sectionState = SECTION_STATES[effectiveSection] ?? SECTION_STATES.hero
     let targetOpacity = sectionState.opacity;
-    
-    if (section === 'terminal') {
-        targetOpacity = 0.15; // 15% for resume/terminal
-    }
-
-    if (Date.now() > nextBlinkRef.current) doBlink()
+    if (section === 'terminal') targetOpacity = 0.15;
 
     // ── Gaze & Tilt Logic ──
     if (idleSec < 2) {
       // Active Tracking
       const [mx, my] = mouseRef.current
-      gazeTargetRef.current.set(mx * 0.8, my * 0.8) // Eyes track cursor position directly
-      headTiltTargetRef.current.set(mx * 0.2, my * 0.2) // Head tilts slightly
+      // Gaze is expressive (moves up to 0.8 units locally)
+      gazeTargetRef.current.set(mx * 0.8, my * 0.8) 
+      // Head tilt is limited to ~3-5 degrees (0.05 to 0.08 radians)
+      headTiltTargetRef.current.set(mx * 0.06, my * 0.06) 
     } else {
-      // Idle state: eyes slowly lock to center (0,0), head tilts back slowly
-      const lockSpeed = Math.min(1.0, (idleSec - 2) * 0.05) // Gradually lock over time
-      
-      // Idle drift
-      const driftX = Math.sin(t * 0.2) * 0.1 * (1.0 - lockSpeed)
-      const driftY = Math.cos(t * 0.15) * 0.1 * (1.0 - lockSpeed)
+      // Idle state
+      const lockSpeed = Math.min(1.0, (idleSec - 2) * 0.05) 
+      const driftX = Math.sin(t * 0.2) * 0.05 * (1.0 - lockSpeed)
+      const driftY = Math.cos(t * 0.15) * 0.05 * (1.0 - lockSpeed)
       
       gazeTargetRef.current.set(driftX, driftY)
-      headTiltTargetRef.current.set(driftX * 0.1, driftY * 0.1)
+      headTiltTargetRef.current.set(driftX * 0.5, driftY * 0.5)
     }
 
-    gazeTargetRef.current.clampLength(0, 1.0)
     gazeRef.current.lerp(gazeTargetRef.current, 0.1)
     headTiltRef.current.lerp(headTiltTargetRef.current, 0.05)
 
@@ -311,79 +237,50 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef }: NeuralSceneProps) => {
     xOffsetRef.current += (sectionState.xOffset - xOffsetRef.current) * 0.03
     
     if (groupRef.current) {
-      // Apply offset horizontally based on section
       groupRef.current.position.x = xOffsetRef.current
     }
 
     const breath = Math.sin(t * (Math.PI * 2) / 6) * 0.5 + 0.5;
 
     // Update Uniforms
-    [skullUniforms, eyeUniforms].forEach((u: any) => {
-      u.uTime.value = t
-      u.uGaze.value.copy(gazeRef.current)
-      u.uHeadTilt.value.copy(headTiltRef.current)
-      u.uBlink.value = blinkRef.current
-      u.uBreath.value = breath
-      u.uGlobalAlpha.value = opacityRef.current
-    })
+    uniforms.uTime.value = t
+    uniforms.uGaze.value.copy(gazeRef.current)
+    uniforms.uHeadTilt.value.copy(headTiltRef.current)
+    uniforms.uBreath.value = breath
+    uniforms.uGlobalAlpha.value = opacityRef.current
   })
 
   return (
-    // Scale reduced significantly from 2.8 to 1.5 to make content primary
-    <group ref={groupRef} scale={[1.5, 1.5, 1.5]} position={[0, -0.2, 0]}>
+    // Keep scale around 1.5 as agreed
+    <group ref={groupRef} scale={[1.6, 1.6, 1.6]} position={[0, -0.2, 0]}>
       
-      {/* ── Layer 4: Eye Glow ── */}
-      {/* A subtle glowing plane behind the eyes to give them atmospheric power */}
-      <mesh position={[-0.18, 0.12, 0.40]}>
-        <planeGeometry args={[0.2, 0.2]} />
-        <meshBasicMaterial color="#00FFFF" transparent opacity={0.15 * opacityRef.current} blending={THREE.AdditiveBlending} depthWrite={false} />
-      </mesh>
-      <mesh position={[0.18, 0.12, 0.40]}>
-        <planeGeometry args={[0.2, 0.2]} />
-        <meshBasicMaterial color="#00FFFF" transparent opacity={0.15 * opacityRef.current} blending={THREE.AdditiveBlending} depthWrite={false} />
-      </mesh>
-
-      {/* SKULL */}
-      <instancedMesh ref={skullMeshRef} args={[undefined, undefined, skullData.count]} frustumCulled={false}>
-        <circleGeometry args={[1, 5]}>
-          <instancedBufferAttribute attach="attributes-aPos" args={[skullPoints, 3]} />
-          <instancedBufferAttribute attach="attributes-aSize" args={[skullData.sizes, 1]} />
-          <instancedBufferAttribute attach="attributes-aPulseOffset" args={[skullData.pulse, 1]} />
-          {/* Dummy aType for skull to avoid shader errors */}
-          <instancedBufferAttribute attach="attributes-aType" args={[new Float32Array(skullData.count), 1]} />
-        </circleGeometry>
+      {/* ── The Network Connections (Lines) ── */}
+      <lineSegments geometry={lineGeometry}>
         <shaderMaterial
-          vertexShader={vertexShader}
-          fragmentShader={fragmentShader}
-          uniforms={skullUniforms}
+          vertexShader={lineVertexShader}
+          fragmentShader={lineFragmentShader}
+          uniforms={uniforms}
           transparent
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
-      </instancedMesh>
+      </lineSegments>
 
-      {/* EYES (Layer 2 & 3: Iris and Orbit) */}
-      <instancedMesh ref={eyeMeshRef} args={[undefined, undefined, eyeData.count]} frustumCulled={false}>
-        <circleGeometry args={[1, 8]}>
-          <instancedBufferAttribute attach="attributes-aPos" args={[eyePoints, 3]} />
-          <instancedBufferAttribute attach="attributes-aSize" args={[eyeData.sizes, 1]} />
-          <instancedBufferAttribute attach="attributes-aPulseOffset" args={[eyeData.pulse, 1]} />
-          <instancedBufferAttribute attach="attributes-aType" args={[eyeTypes, 1]} />
-        </circleGeometry>
+      {/* ── The Network Nodes (Points) ── */}
+      <points geometry={pointGeometry}>
         <shaderMaterial
-          vertexShader={vertexShader}
-          fragmentShader={fragmentShader}
-          uniforms={eyeUniforms}
+          vertexShader={pointVertexShader}
+          fragmentShader={pointFragmentShader}
+          uniforms={uniforms}
           transparent
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
-      </instancedMesh>
+      </points>
+
     </group>
   )
 }
-
-// ─── Wrapper with Event Handling ──────────────────────────────────────────────
 
 export const NeuralFace = () => {
   const mouseRef = useRef<[number, number]>([0, 0])
