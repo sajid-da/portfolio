@@ -3,7 +3,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
 const Particles = () => {
-  const count = 2000
+  const count = 600
   const mesh = useRef<THREE.InstancedMesh>(null)
   const dummy = useMemo(() => new THREE.Object3D(), [])
   
@@ -59,7 +59,7 @@ export const HeroScene = () => {
   return (
     <div className="relative min-h-screen flex items-center justify-center text-center z-10 px-6" id="hero">
       <div className="absolute inset-0 -z-10">
-        <Canvas camera={{ position: [0, 0, 15], fov: 75 }}>
+        <Canvas dpr={[1, 1.5]} camera={{ position: [0, 0, 15], fov: 75 }}>
           <fog attach="fog" args={['#050505', 10, 50]} />
           <Particles />
         </Canvas>

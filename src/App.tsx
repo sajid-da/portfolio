@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { MainLayout } from './components/layout/MainLayout'
 import { useStore } from './store/useStore'
 import { ResumeCenter } from './components/resume/ResumeCenter'
@@ -7,12 +8,18 @@ import { InteractiveTerminal } from './components/terminal/InteractiveTerminal'
 import { MissionControl } from './components/about/MissionControl'
 import { ExperienceTimeline } from './components/about/ExperienceTimeline'
 import { SmoothScroll } from './components/layout/SmoothScroll'
+import { BootSequence } from './components/layout/BootSequence'
 import { HeroScene } from './components/3d/HeroScene'
 import { SkillsGalaxy } from './components/3d/SkillsGalaxy'
 import { ContactCore } from './components/3d/ContactCore'
 
 function App() {
   const { isRecruiterMode } = useStore()
+  const [isBooted, setIsBooted] = useState(false)
+
+  if (!isBooted && !isRecruiterMode) {
+    return <BootSequence onComplete={() => setIsBooted(true)} />
+  }
 
   return (
     <SmoothScroll>

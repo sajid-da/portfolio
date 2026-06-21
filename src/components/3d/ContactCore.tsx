@@ -2,6 +2,8 @@ import { useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Sphere, MeshDistortMaterial } from '@react-three/drei'
 import * as THREE from 'three'
+import { FaWhatsapp, FaInstagram } from 'react-icons/fa'
+import { SiGmail } from 'react-icons/si'
 
 const Core = () => {
   const meshRef = useRef<THREE.Mesh>(null)
@@ -33,7 +35,7 @@ export const ContactCore = () => {
   return (
     <section className="relative w-full h-screen flex flex-col items-center justify-center overflow-hidden" id="contact">
       <div className="absolute inset-0 z-0 opacity-60">
-        <Canvas camera={{ position: [0, 0, 5] }}>
+        <Canvas dpr={[1, 1.5]} camera={{ position: [0, 0, 5] }}>
           <ambientLight intensity={0.5} />
           <directionalLight position={[10, 10, 10]} intensity={1} />
           <Core />
@@ -53,9 +55,20 @@ export const ContactCore = () => {
           </div>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-6">
-          <a href="mailto:ansarisajidofficial@gmail.com" className="px-10 py-5 bg-white text-black font-black rounded-2xl hover:scale-105 transition-transform duration-300 shadow-[0_0_30px_rgba(255,255,255,0.2)] tracking-widest uppercase text-sm">
-            INITIALIZE CONTACT
+        <div className="flex flex-col sm:flex-row justify-center gap-6 mt-8">
+          <a href="https://wa.me/918123349025" target="_blank" rel="noreferrer" className="flex items-center gap-3 px-8 py-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-[#25D366]/20 hover:border-[#25D366]/50 hover:text-[#25D366] text-white transition-all duration-300 group shadow-lg">
+            <FaWhatsapp size={24} className="group-hover:scale-110 transition-transform" />
+            <span className="font-bold tracking-wider">WHATSAPP</span>
+          </a>
+          
+          <a href="https://mail.google.com/mail/?view=cm&fs=1&to=ansarisajidofficial@gmail.com" target="_blank" rel="noreferrer" className="flex items-center gap-3 px-8 py-4 bg-white text-black rounded-2xl hover:bg-gray-200 transition-all duration-300 shadow-[0_0_30px_rgba(255,255,255,0.2)] group">
+            <SiGmail size={24} className="group-hover:scale-110 transition-transform text-red-500" />
+            <span className="font-black tracking-widest">EMAIL</span>
+          </a>
+          
+          <a href="https://www.instagram.com/sajidzaroon/" target="_blank" rel="noreferrer" className="flex items-center gap-3 px-8 py-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-[#E1306C]/20 hover:border-[#E1306C]/50 hover:text-[#E1306C] text-white transition-all duration-300 group shadow-lg">
+            <FaInstagram size={24} className="group-hover:scale-110 transition-transform" />
+            <span className="font-bold tracking-wider">INSTAGRAM</span>
           </a>
         </div>
       </div>
