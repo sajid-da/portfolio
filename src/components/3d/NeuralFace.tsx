@@ -8,51 +8,45 @@ import { FACE_VERTICES, PARTICLE_COUNT } from './faceVertices'
 const vertexShader = `
   uniform float uTime;
   uniform float uEnergy;
-  uniform vec2  uGaze;      // normalized mouse [-1,1]
-  uniform float uBlink;     // 0=open 1=closed
-  uniform float uBreath;    // 0..1 breathing oscillation
-  uniform float uScrollDepth; // 0=hero 1=deep
+  uniform vec2  uGaze;
+  uniform float uBlink;
+  uniform float uBreath;
+  uniform float uScrollDepth;
   uniform vec3  uFocusColor;
-  uniform float uConverge;  // contact section convergence
+  uniform float uConverge;
 
+  attribute vec3  aPos;
   attribute float aSize;
   attribute float aPulseOffset;
 
   varying vec3  vColor;
   varying float vAlpha;
 
-  // Simple noise
-  float hash(float n) { return fract(sin(n) * 43758.5453); }
-  float noise(float x) {
-    float i = floor(x);
-    float f = fract(x);
-    return mix(hash(i), hash(i+1.0), smoothstep(0.0,1.0,f));
-  }
-
   void main() {
-    vec3 pos = position;
+    // Start with the instanced coordinate
+    vec3 p = aPos;
 
     // ── Breathing: subtle scale oscillation ──
     float breathScale = 1.0 + uBreath * 0.025;
-    pos *= breathScale;
+    p *= breathScale;
 
     // ── Contact convergence: pull particles toward eye region ──
     if (uConverge > 0.0) {
       vec3 eyeCenter = vec3(0.0, 0.23, 0.4);
-      pos = mix(pos, eyeCenter + (pos - eyeCenter) * 0.3, uConverge * 0.6);
+      p = mix(p, eyeCenter + (p - eyeCenter) * 0.3, uConverge * 0.6);
     }
 
     // ── Gaze: offset eye-region particles based on mouse ──
-    float eyeMask = smoothstep(0.25, 0.0, length(pos.xy - vec2(0.0, 0.23)));
-    pos.xy += uGaze * eyeMask * 0.08;
+    float eyeMask = smoothstep(0.25, 0.0, length(p.xy - vec2(0.0, 0.23)));
+    p.xy += uGaze * eyeMask * 0.08;
 
     // ── Blink: collapse eye particles vertically ──
-    float blinkMask = smoothstep(0.22, 0.0, abs(pos.x) - 0.1) *
-                      smoothstep(0.15, 0.0, abs(pos.y - 0.23));
-    pos.y -= blinkMask * uBlink * 0.12;
+    float blinkMask = smoothstep(0.22, 0.0, abs(p.x) - 0.1) *
+                      smoothstep(0.15, 0.0, abs(p.y - 0.23));
+    p.y -= blinkMask * uBlink * 0.12;
 
     // ── Neural pulse wave from eye center ──
-    float dist = length(pos - vec3(0.0, 0.23, 0.35));
+    float dist = length(p - vec3(0.0, 0.23, 0.35));
     float pulse = sin(dist * 8.0 - uTime * 3.0 + aPulseOffset) * 0.5 + 0.5;
     pulse *= uEnergy;
 
@@ -60,11 +54,15 @@ const vertexShader = `
     float scrollFade = 1.0 - smoothstep(0.3, 0.7, uScrollDepth) * 0.45;
     scrollFade += smoothstep(0.7, 1.0, uScrollDepth) * 0.35;
 
-    vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
+    // ── Size Calculation ──
+    float s = aSize * (1.0 + pulse * 0.6) * scrollFade * 0.0025;
 
-    // ── Point size: base + energy pulse ──
-    float size = aSize * (1.0 + pulse * 0.6) * scrollFade;
-    gl_PointSize = size * (300.0 / -mvPos.z);
+    // Compute final vertex position
+    // "position" is the vertex of the base geometry (circle/plane)
+    // "p" is the particle's origin
+    vec3 finalPos = p + position * s;
+
+    vec4 mvPos = modelViewMatrix * vec4(finalPos, 1.0);
     gl_Position = projectionMatrix * mvPos;
 
     // ── Color ──
@@ -79,59 +77,10 @@ const fragmentShader = `
   varying float vAlpha;
 
   void main() {
-    vec2 uv = gl_PointCoord - 0.5;
-    float r = dot(uv, uv);
-    if (r > 0.25) discard;
-    float alpha = (1.0 - smoothstep(0.1, 0.25, r)) * vAlpha;
-    gl_FragColor = vec4(vColor, alpha);
+    // We are rendering a circle geometry, so we don't need pointcoord discard
+    gl_FragColor = vec4(vColor, vAlpha);
   }
 `
-
-// ─── Connection line shader ────────────────────────────────────────────────────
-
-const lineVertShader = `
-  uniform float uTime;
-  uniform float uEnergy;
-  attribute float aLinePhase;
-  varying float vAlpha;
-  void main() {
-    vAlpha = (0.5 + sin(uTime * 2.0 + aLinePhase) * 0.5) * uEnergy * 0.35;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`
-
-const lineFragShader = `
-  uniform vec3 uFocusColor;
-  varying float vAlpha;
-  void main() {
-    gl_FragColor = vec4(mix(vec3(0.0, 0.83, 1.0), uFocusColor, 0.5), vAlpha);
-  }
-`
-
-// ─── Build static connection graph (once) ────────────────────────────────────
-
-function buildConnectionGraph(vertices: Float32Array, maxEdges: number, maxDist: number) {
-  const positions: number[] = []
-  const phases: number[] = []
-  const n = vertices.length / 3
-
-  for (let i = 0; i < n && positions.length / 6 < maxEdges; i++) {
-    const ax = vertices[i * 3], ay = vertices[i * 3 + 1], az = vertices[i * 3 + 2]
-    // Only look at nearby indices to keep it O(n) roughly
-    const stride = Math.max(1, Math.floor(n / 800))
-    for (let j = i + 1; j < Math.min(i + 60, n); j += stride) {
-      const bx = vertices[j * 3], by = vertices[j * 3 + 1], bz = vertices[j * 3 + 2]
-      const dx = ax - bx, dy = ay - by, dz = az - bz
-      if (dx * dx + dy * dy + dz * dz < maxDist * maxDist) {
-        positions.push(ax, ay, az, bx, by, bz)
-        const phase = Math.random() * Math.PI * 2
-        phases.push(phase, phase)
-        if (positions.length / 6 >= maxEdges) break
-      }
-    }
-  }
-  return { positions: new Float32Array(positions), phases: new Float32Array(phases) }
-}
 
 // ─── Section color map ────────────────────────────────────────────────────────
 
@@ -155,8 +104,7 @@ interface NeuralSceneProps {
 
 const NeuralScene = ({ mouseRef, idleRef, sectionRef, scrollDepthRef }: NeuralSceneProps) => {
   const { size } = useThree()
-  const particleMatRef = useRef<THREE.ShaderMaterial>(null)
-  const lineMatRef = useRef<THREE.ShaderMaterial>(null)
+  const meshRef = useRef<THREE.InstancedMesh>(null)
   const gazeRef = useRef(new THREE.Vector2(0, 0))
   const gazeTargetRef = useRef(new THREE.Vector2(0, 0))
   const energyRef = useRef(0.3)
@@ -165,31 +113,27 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef, scrollDepthRef }: NeuralSc
   const nextBlinkRef = useRef(Date.now() + 10000 + Math.random() * 10000)
   const blinkingRef = useRef(false)
 
-  // Build geometry ONCE
-  const { positions: particlePos, sizes, pulseOffsets } = useMemo(() => {
+  // Use Instanced attributes
+  const { positions, sizes, pulseOffsets, count } = useMemo(() => {
     const isMobile = size.width < 768
-    const targetCount = isMobile ? 2500 : Math.min(PARTICLE_COUNT, 10000)
-    const step = Math.ceil(PARTICLE_COUNT / targetCount)
-    const positions: number[] = []
-    const sizes: number[] = []
-    const pulseOffsets: number[] = []
+    const targetCount = isMobile ? 3000 : PARTICLE_COUNT
+    const step = Math.max(1, Math.ceil(PARTICLE_COUNT / targetCount))
+    const p: number[] = []
+    const s: number[] = []
+    const po: number[] = []
+    
     for (let i = 0; i < PARTICLE_COUNT; i += step) {
-      positions.push(FACE_VERTICES[i * 3], FACE_VERTICES[i * 3 + 1], FACE_VERTICES[i * 3 + 2])
-      sizes.push(1.5 + Math.random() * 2.5)
-      pulseOffsets.push(Math.random() * Math.PI * 2)
+      p.push(FACE_VERTICES[i * 3], FACE_VERTICES[i * 3 + 1], FACE_VERTICES[i * 3 + 2])
+      s.push(1.5 + Math.random() * 2.5)
+      po.push(Math.random() * Math.PI * 2)
     }
     return {
-      positions: new Float32Array(positions),
-      sizes: new Float32Array(sizes),
-      pulseOffsets: new Float32Array(pulseOffsets),
+      positions: new Float32Array(p),
+      sizes: new Float32Array(s),
+      pulseOffsets: new Float32Array(po),
+      count: p.length / 3
     }
   }, [size.width])
-
-  // Build STATIC connection graph ONCE
-  const { positions: linePos, phases: linePhases } = useMemo(
-    () => buildConnectionGraph(particlePos, 800, 0.28),
-    [particlePos]
-  )
 
   const particleUniforms = useMemo(() => ({
     uTime:        { value: 0 },
@@ -202,13 +146,6 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef, scrollDepthRef }: NeuralSc
     uConverge:    { value: 0 },
   }), [])
 
-  const lineUniforms = useMemo(() => ({
-    uTime:       { value: 0 },
-    uEnergy:     { value: 0.3 },
-    uFocusColor: { value: new THREE.Vector3(0, 0.83, 1) },
-  }), [])
-
-  // Blink handler
   const doBlink = useCallback(async () => {
     if (blinkingRef.current) return
     blinkingRef.current = true
@@ -228,44 +165,33 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef, scrollDepthRef }: NeuralSc
     const section = sectionRef.current || 'hero'
     const sectionState = SECTION_STATES[section] ?? SECTION_STATES.hero
 
-    // Blink trigger
     if (Date.now() > nextBlinkRef.current) doBlink()
 
-    // Target gaze based on idle state
     if (idleSec < 5) {
-      // Normal tracking: 70% mouse + 30% ahead (prediction)
       const [mx, my] = mouseRef.current
       const predict = 0.3
       gazeTargetRef.current.set(mx * (1 + predict), my * (1 + predict))
     } else if (idleSec < 10) {
-      // Fading: lerp toward center
       const fade = 1 - (idleSec - 5) / 5
       const [mx, my] = mouseRef.current
       gazeTargetRef.current.set(mx * fade, my * fade)
     } else {
-      // Death stare: subtle micro-drift
       gazeTargetRef.current.set(
         Math.sin(t * 0.07) * 0.03,
         Math.sin(t * 0.11) * 0.02
       )
     }
 
-    // Clamp gaze to ±8° (sin 8° ≈ 0.14)
     gazeTargetRef.current.clampLength(0, 0.14)
     gazeRef.current.lerp(gazeTargetRef.current, 0.05)
 
-    // Energy lerp
     energyRef.current += (sectionState.energy - energyRef.current) * 0.02
     const [cr, cg, cb] = sectionState.color
     colorRef.current.lerp(new THREE.Color(cr, cg, cb), 0.02)
 
-    // Breathing
     const breath = Math.sin(t * (Math.PI * 2) / 10) * 0.5 + 0.5
-
-    // Contact convergence
     const converge = section === 'contact' ? Math.min(energyRef.current, 1.0) : 0
 
-    // Update particle uniforms
     const pu = particleUniforms
     pu.uTime.value = t
     pu.uEnergy.value = energyRef.current
@@ -275,41 +201,19 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef, scrollDepthRef }: NeuralSc
     pu.uScrollDepth.value = scrollDepthRef.current
     pu.uFocusColor.value.set(colorRef.current.r, colorRef.current.g, colorRef.current.b)
     pu.uConverge.value = converge
-
-    // Update line uniforms
-    lineUniforms.uTime.value = t
-    lineUniforms.uEnergy.value = energyRef.current
-    lineUniforms.uFocusColor.value.set(colorRef.current.r, colorRef.current.g, colorRef.current.b)
   })
 
-  return (
-    <group scale={[1.4, 1.4, 1.4]}>
-      {/* Neural connection lines */}
-      <lineSegments>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[linePos, 3]} />
-          <bufferAttribute attach="attributes-aLinePhase" args={[linePhases, 1]} />
-        </bufferGeometry>
-        <shaderMaterial
-          ref={lineMatRef}
-          vertexShader={lineVertShader}
-          fragmentShader={lineFragShader}
-          uniforms={lineUniforms}
-          transparent
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </lineSegments>
 
-      {/* Particle face */}
-      <points>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[particlePos, 3]} />
-          <bufferAttribute attach="attributes-aSize" args={[sizes, 1]} />
-          <bufferAttribute attach="attributes-aPulseOffset" args={[pulseOffsets, 1]} />
-        </bufferGeometry>
+
+  return (
+    <group scale={[2.0, 2.0, 2.0]} position={[0, -0.5, 0]}>
+      <instancedMesh ref={meshRef} args={[undefined, undefined, count]} frustumCulled={false}>
+        <circleGeometry args={[1, 6]}>
+          <instancedBufferAttribute attach="attributes-aPos" args={[positions, 3]} />
+          <instancedBufferAttribute attach="attributes-aSize" args={[sizes, 1]} />
+          <instancedBufferAttribute attach="attributes-aPulseOffset" args={[pulseOffsets, 1]} />
+        </circleGeometry>
         <shaderMaterial
-          ref={particleMatRef}
           vertexShader={vertexShader}
           fragmentShader={fragmentShader}
           uniforms={particleUniforms}
@@ -317,7 +221,7 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef, scrollDepthRef }: NeuralSc
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
-      </points>
+      </instancedMesh>
     </group>
   )
 }
@@ -331,7 +235,6 @@ export const NeuralFace = () => {
   const scrollDepthRef = useRef<number>(0)
 
   useEffect(() => {
-    // Mouse tracking
     const handleMouse = (e: MouseEvent) => {
       mouseRef.current = [
         (e.clientX / window.innerWidth) * 2 - 1,
@@ -345,7 +248,6 @@ export const NeuralFace = () => {
       scrollDepthRef.current = maxScroll > 0 ? window.scrollY / maxScroll : 0
     }
 
-    // Section observer
     const sections = ['hero', 'about', 'skills', 'projects', 'achievements', 'contact']
     const observers: IntersectionObserver[] = []
     sections.forEach(id => {
@@ -376,9 +278,10 @@ export const NeuralFace = () => {
     >
       <Canvas
         dpr={[1, 1.5]}
-        camera={{ position: [0, 0, 4], fov: 50 }}
+        camera={{ position: [0, 0, 4.5], fov: 50 }}
         gl={{ antialias: false, powerPreference: 'high-performance' }}
       >
+        <fog attach="fog" args={['#000', 3, 8]} />
         <NeuralScene
           mouseRef={mouseRef}
           idleRef={idleRef}
