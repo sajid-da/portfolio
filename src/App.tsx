@@ -34,6 +34,10 @@ function App() {
   return (
     <SmoothScroll>
       <MainLayout>
+        {/* Subtle Background Gradients */}
+        {!isRecruiterMode && (
+          <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-bg to-bg pointer-events-none z-[-1]"></div>
+        )}
         {!isRecruiterMode && <NeuralFace />}
         {isRecruiterMode ? (
           <div className="max-w-4xl mx-auto px-6 py-16">
@@ -67,9 +71,7 @@ function App() {
             <ResumeCenter />
           </div>
         ) : (
-          <div className="flex flex-col min-h-screen relative overflow-hidden">
-            {/* Subtle Background Gradients */}
-            <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-bg to-bg -z-20 pointer-events-none"></div>
+          <div className="flex flex-col min-h-screen relative overflow-hidden z-10">
             
             <HeroScene />
             <MissionControl />

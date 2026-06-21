@@ -159,6 +159,18 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef, scrollDepthRef }: NeuralSc
     nextBlinkRef.current = Date.now() + 8000 + Math.random() * 12000
   }, [])
 
+  // Initialize instanceMatrix to Identity
+  useEffect(() => {
+    if (meshRef.current) {
+      const dummy = new THREE.Object3D()
+      for (let i = 0; i < count; i++) {
+        dummy.updateMatrix()
+        meshRef.current.setMatrixAt(i, dummy.matrix)
+      }
+      meshRef.current.instanceMatrix.needsUpdate = true
+    }
+  }, [count])
+
   useFrame((state) => {
     const t = state.clock.elapsedTime
     const idleSec = (Date.now() - idleRef.current) / 1000
@@ -274,7 +286,7 @@ export const NeuralFace = () => {
   return (
     <div
       className="fixed inset-0 pointer-events-none"
-      style={{ zIndex: -10, opacity: 0.85 }}
+      style={{ zIndex: 0, opacity: 0.85 }}
     >
       <Canvas
         dpr={[1, 1.5]}

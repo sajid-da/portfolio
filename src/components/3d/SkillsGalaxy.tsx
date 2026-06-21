@@ -38,6 +38,14 @@ const Planet = ({ position, skillKey, icon: Icon, setActiveSkill }: { position: 
     <mesh position={position} ref={meshRef}>
       <sphereGeometry args={[0.5, 32, 32]} />
       <meshStandardMaterial color={data.color} emissive={data.color} emissiveIntensity={0.2} roughness={0.4} metalness={0.8} />
+      
+      {/* Hologram Icon on the planet itself */}
+      <Html transform distanceFactor={5} position={[0, 0, 0.51]}>
+        <div className="text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] opacity-90 pointer-events-none">
+          <Icon size={28} />
+        </div>
+      </Html>
+
       <Html distanceFactor={10} position={[0, -0.8, 0]} center zIndexRange={[100, 0]}>
         <div 
           onClick={() => setActiveSkill(skillKey)}

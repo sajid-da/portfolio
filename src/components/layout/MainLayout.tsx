@@ -23,7 +23,7 @@ export const MainLayout = ({ children }: { children: ReactNode }) => {
   }, [toggleRecruiterMode])
 
   return (
-    <div className={`min-h-screen w-full transition-colors duration-500 ${isRecruiterMode ? 'bg-gray-50 text-gray-900' : 'bg-bg text-white'}`}>
+    <div className={`min-h-screen w-full transition-colors duration-500 ${isRecruiterMode ? 'bg-gray-50 text-gray-900' : 'bg-transparent text-white'}`}>
       <CommandPalette />
       <SocialToggle />
       {!isRecruiterMode && <MiniRadar />}

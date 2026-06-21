@@ -1,17 +1,32 @@
 import { useEffect, useState } from 'react'
 
-const sections = ['Hero', 'About', 'Skills', 'Projects', 'Resume', 'Contact']
+const sections = ['Hero', 'About', 'Skills', 'Projects', 'Achievements', 'Contact']
 
 export const MiniRadar = () => {
   const [activeSection, setActiveSection] = useState('Hero')
 
   useEffect(() => {
-    // This will be replaced with actual scroll observers later
-    const handleScroll = () => {
-      // Stub implementation
+    const observers: IntersectionObserver[] = []
+    
+    sections.forEach(section => {
+      const el = document.getElementById(section.toLowerCase())
+      if (!el) return
+      
+      const obs = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setActiveSection(section)
+          }
+        },
+        { threshold: 0.3 }
+      )
+      obs.observe(el)
+      observers.push(obs)
+    })
+
+    return () => {
+      observers.forEach(obs => obs.disconnect())
     }
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   return (
