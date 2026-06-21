@@ -54,7 +54,7 @@ export const ContactCore = () => {
         </div>
 
         <div className="flex flex-wrap justify-center gap-6">
-          <a href="mailto:sajid.ansari@example.com" className="px-10 py-5 bg-white text-black font-black rounded-2xl hover:scale-105 transition-transform duration-300 shadow-[0_0_30px_rgba(255,255,255,0.2)] tracking-widest uppercase text-sm">
+          <a href="mailto:ansarisajidofficial@gmail.com" className="px-10 py-5 bg-white text-black font-black rounded-2xl hover:scale-105 transition-transform duration-300 shadow-[0_0_30px_rgba(255,255,255,0.2)] tracking-widest uppercase text-sm">
             INITIALIZE CONTACT
           </a>
         </div>

@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
-import { Terminal, Search, Folder, User, Mail, Code2, Briefcase, X } from 'lucide-react'
+import { Terminal, Search, Folder, User, Mail, Code2, Briefcase, X, Code, Award } from 'lucide-react'
 import { useStore } from '../../store/useStore'
 
 const commands = [
   { id: 'projects', name: 'Go to Projects', icon: <Folder size={16} /> },
   { id: 'resume', name: 'Open Resume', icon: <User size={16} /> },
-  { id: 'contact', name: 'Contact Me', icon: <Mail size={16} /> },
-  { id: 'github', name: 'GitHub Profile', icon: <Code2 size={16} /> },
-  { id: 'linkedin', name: 'LinkedIn Profile', icon: <Briefcase size={16} /> },
+  { id: 'contact', name: 'Contact Me', icon: <Mail size={16} />, link: 'mailto:ansarisajidofficial@gmail.com' },
+  { id: 'github', name: 'GitHub Profile', icon: <Code2 size={16} />, link: 'https://github.com/sajid-da' },
+  { id: 'linkedin', name: 'LinkedIn Profile', icon: <Briefcase size={16} />, link: 'https://www.linkedin.com/in/sajidzaroon/' },
+  { id: 'leetcode', name: 'LeetCode Profile', icon: <Code size={16} />, link: 'https://leetcode.com/u/W4CqDZs5hX/' },
+  { id: 'credly', name: 'Credly Badges', icon: <Award size={16} />, link: 'https://www.credly.com/users/sajid-ansari.00958aa0' },
   { id: 'terminal', name: 'Open Terminal', icon: <Terminal size={16} /> },
 ]
 
@@ -58,7 +60,13 @@ export const CommandPalette = () => {
                   <button 
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-300 hover:bg-white/5 hover:text-white rounded-xl transition-colors group"
                     onClick={() => {
-                      console.log('Execute', command.id);
+                      if (command.link) {
+                        window.open(command.link, '_blank')
+                      } else {
+                        // For internal navigation, you could add scrolling logic here
+                        const element = document.getElementById(command.id)
+                        if (element) element.scrollIntoView({ behavior: 'smooth' })
+                      }
                       setIsOpen(false);
                     }}
                   >

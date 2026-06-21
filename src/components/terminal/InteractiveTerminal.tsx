@@ -65,7 +65,7 @@ export const InteractiveTerminal = () => {
         output = 'Top 3 Hackathon Winner (VIBEathon)\n42 Google Cloud Badges\n100+ LeetCode problems solved\nCGPA: 8.5'
         break
       case 'contact':
-        output = 'Email: sajid.ansari@example.com\nLinkedIn: linkedin.com/in/sajid\nGitHub: github.com/sajid\nResponse time: < 24 hours'
+        output = 'Email: ansarisajidofficial@gmail.com\nLinkedIn: linkedin.com/in/sajidzaroon\nGitHub: github.com/sajid-da\nLeetCode: leetcode.com/u/W4CqDZs5hX\nCredly: credly.com/users/sajid-ansari.00958aa0\nResponse time: < 24 hours'
         break
       case 'hackathon':
         output = (

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { useStore } from '../../store/useStore'
 import { MiniRadar } from '../navigation/MiniRadar'
 import { CommandPalette } from '../navigation/CommandPalette'
+import { SocialToggle } from '../navigation/SocialToggle'
 
 export const MainLayout = ({ children }: { children: ReactNode }) => {
   const { isRecruiterMode, toggleRecruiterMode } = useStore()
@@ -24,6 +25,7 @@ export const MainLayout = ({ children }: { children: ReactNode }) => {
   return (
     <div className={`min-h-screen w-full transition-colors duration-500 ${isRecruiterMode ? 'bg-gray-50 text-gray-900' : 'bg-bg text-white'}`}>
       <CommandPalette />
+      <SocialToggle />
       {!isRecruiterMode && <MiniRadar />}
       
       {/* Recruiter Mode Toggle Button */}
