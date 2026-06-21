@@ -1,6 +1,6 @@
 import { Activity, Cloud, Code2, Trophy } from 'lucide-react'
 import { FaUniversity, FaBrain } from 'react-icons/fa'
-import { SiGooglecloud, SiCoursera, SiIbm } from 'react-icons/si'
+import { SiGooglecloud, SiCoursera } from 'react-icons/si'
 
 export const MissionControl = () => {
   return (
@@ -54,7 +54,7 @@ export const MissionControl = () => {
         <span className="flex items-center gap-2 font-bold text-xl tracking-widest uppercase text-white hover:text-blue-400 transition-colors"><SiGooglecloud /> Google Cloud</span>
         <span className="flex items-center gap-2 font-bold text-xl tracking-widest uppercase text-white hover:text-blue-600 transition-colors"><SiCoursera /> Coursera</span>
         <span className="flex items-center gap-2 font-bold text-xl tracking-widest uppercase text-white hover:text-purple-500 transition-colors"><FaBrain /> DeepLearning.AI</span>
-        <span className="flex items-center gap-2 font-black text-2xl tracking-tighter text-white hover:text-blue-800 transition-colors"><SiIbm /> IBM</span>
+        <span className="flex items-center gap-2 font-black text-2xl tracking-tighter text-white hover:text-blue-800 transition-colors">IBM</span>
       </div>
     </section>
   )

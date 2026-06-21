@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ExternalLink, Code2, ChevronRight, X, Activity, Server, Database, Brain } from 'lucide-react'
+import { ExternalLink, ChevronRight, X, Activity, Server, Database, Brain } from 'lucide-react'
 import { FaGithub } from 'react-icons/fa'
 
 const caseStudies = {
