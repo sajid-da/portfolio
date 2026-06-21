@@ -14,6 +14,7 @@ const vertexShader = `
 
 const fragmentShader = `
   uniform sampler2D uTexture;
+  uniform sampler2D uTextureSmile;
   uniform float uTime;
   uniform vec2 uGaze;
   uniform float uGlobalAlpha;
@@ -25,46 +26,39 @@ const fragmentShader = `
   void main() {
     vec2 uv = vUv;
 
-    // 1. Initial Texture Sample to get Luminance (Depth Map approximation)
-    vec4 baseTex = texture2D(uTexture, uv);
+    // Sample both textures and blend them based on uSmile
+    vec4 texNormal = texture2D(uTexture, uv);
+    vec4 texSmile = texture2D(uTextureSmile, uv);
+    vec4 baseTex = mix(texNormal, texSmile, uSmile);
+    
+    // Get luminance for depth
     float luma = dot(baseTex.rgb, vec3(0.299, 0.587, 0.114));
 
-    // 2. Fake 3D Parallax / Gaze Tracking (Increased sensitivity)
-    // Darker areas (background) move less, bright areas (foreground) move more
-    vec2 parallaxOffset = uGaze * (luma * 0.15); // Increased from 0.05 to 0.15
-    
-    // 3. Subtle Breathing Warp
+    // Parallax
+    vec2 parallaxOffset = uGaze * (luma * 0.15);
     float breath = sin(uTime * 1.5 + uv.y * 5.0) * 0.003;
     uv += parallaxOffset + vec2(0.0, breath);
 
-    // 4. Smile Distortion
-    // Approximate mouth region: center x=0.5, y=0.3
-    // We want to pull the corners of the mouth UP.
-    // To move the image UP, we sample FROM BELOW (subtract from uv.y).
-    float mouthDist = distance(uv, vec2(0.5, 0.28));
-    float mouthMask = smoothstep(0.15, 0.0, mouthDist);
-    // The distortion is stronger at the corners (abs(x - 0.5) is larger)
-    float cornerPull = abs(uv.x - 0.5) * 0.4;
-    uv.y -= uSmile * mouthMask * cornerPull;
+    // Final sample with warped UVs
+    vec4 finalTexNormal = texture2D(uTexture, uv);
+    vec4 finalTexSmile = texture2D(uTextureSmile, uv);
+    vec4 finalTex = mix(finalTexNormal, finalTexSmile, uSmile);
+    
+    float finalLuma = dot(finalTex.rgb, vec3(0.299, 0.587, 0.114));
 
-    // 5. Final Texture Sample with distorted UVs
-    vec4 texColor = texture2D(uTexture, uv);
-    float finalLuma = dot(texColor.rgb, vec3(0.299, 0.587, 0.114));
-
-    // 6. Colorize (Replace Gold with Portfolio Cyan)
+    // Colorize
     vec3 finalColor = uColor * finalLuma * 2.0;
 
-    // 7. Smooth Edges (Vignette)
+    // Vignette
     float dist = distance(vUv, vec2(0.5));
     float vignette = smoothstep(0.5, 0.2, dist);
 
-    gl_FragColor = vec4(finalColor, texColor.a * uGlobalAlpha * vignette);
+    gl_FragColor = vec4(finalColor, finalTex.a * uGlobalAlpha * vignette);
   }
 `;
 
 // ─── Section Configuration ────────────────────────────────────────────────────
 
-// Face is scaled down and pushed right to allow content to breathe
 const SECTION_STATES: Record<string, { opacity: number; xOffset: number }> = {
   hero:         { opacity: 1.0, xOffset: 0.0 },
   about:        { opacity: 1.0, xOffset: 2.8 },
@@ -91,21 +85,25 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef }: NeuralSceneProps) => {
   const opacityRef = useRef(1.0)
   const xOffsetRef = useRef(0.0)
 
-  // Load the image texture
-  const texture = useMemo(() => {
-    const tex = new THREE.TextureLoader().load('/neural-face.png')
-    tex.colorSpace = THREE.SRGBColorSpace
-    return tex
+  // Load the image textures
+  const { texNormal, texSmile } = useMemo(() => {
+    const loader = new THREE.TextureLoader()
+    const texN = loader.load('/neural-face.png')
+    const texS = loader.load('/neural-face-smile.png')
+    texN.colorSpace = THREE.SRGBColorSpace
+    texS.colorSpace = THREE.SRGBColorSpace
+    return { texNormal: texN, texSmile: texS }
   }, [])
 
   const uniforms = useMemo(() => ({
-    uTexture:     { value: texture },
-    uTime:        { value: 0 },
-    uGaze:        { value: new THREE.Vector2(0, 0) },
-    uGlobalAlpha: { value: 1.0 },
-    uColor:       { value: new THREE.Color('#00D4FF') }, // The exact portfolio cyan
-    uSmile:       { value: 0.0 }
-  }), [texture])
+    uTexture:      { value: texNormal },
+    uTextureSmile: { value: texSmile },
+    uTime:         { value: 0 },
+    uGaze:         { value: new THREE.Vector2(0, 0) },
+    uGlobalAlpha:  { value: 1.0 },
+    uColor:        { value: new THREE.Color('#00D4FF') },
+    uSmile:        { value: 0.0 }
+  }), [texNormal, texSmile])
 
   const smileRef = useRef(0.0)
 
@@ -134,7 +132,6 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef }: NeuralSceneProps) => {
       gazeTargetRef.current.set(driftX, driftY)
     }
 
-    // Smile when idle for > 2 seconds, or briefly every 15 seconds
     if (idleSec > 2.0 || (t % 15.0) < 2.0) {
       targetSmile = 1.0;
     }
@@ -142,22 +139,22 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef }: NeuralSceneProps) => {
     gazeRef.current.lerp(gazeTargetRef.current, 0.08)
     smileRef.current += (targetSmile - smileRef.current) * 0.05
 
-    // ── Interpolations ──
     opacityRef.current += (targetOpacity - opacityRef.current) * 0.05
     xOffsetRef.current += (sectionState.xOffset - xOffsetRef.current) * 0.04
     
     if (meshRef.current) {
       meshRef.current.position.x = xOffsetRef.current
+      // Physically rotate the entire mesh to track cursor, combined with shader parallax
+      meshRef.current.rotation.y = gazeRef.current.x * 0.4
+      meshRef.current.rotation.x = -gazeRef.current.y * 0.4
     }
 
-    // Update Uniforms
     uniforms.uTime.value = t
     uniforms.uGaze.value.copy(gazeRef.current)
     uniforms.uGlobalAlpha.value = opacityRef.current
     uniforms.uSmile.value = smileRef.current
   })
 
-  // The image is perfectly square, so aspect ratio is 1:1. Scale dictates size.
   return (
     <mesh ref={meshRef} scale={[6, 6, 1]} position={[0, 0, 0]}>
       <planeGeometry args={[1, 1, 32, 32]} />
