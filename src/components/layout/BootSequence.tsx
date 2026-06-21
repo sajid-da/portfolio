@@ -36,11 +36,11 @@ export const BootSequence = ({ onComplete }: { onComplete: () => void }) => {
         </div>
         
         <div className="h-32 text-xs text-gray-500 space-y-2 mt-8">
-          {progress > 10 && <div>> Loading Core Neural Modules... <span className="text-green-500">OK</span></div>}
-          {progress > 30 && <div>> Connecting to 3D Rendering Engine... <span className="text-green-500">OK</span></div>}
-          {progress > 50 && <div>> Establishing WebGL Context... <span className="text-green-500">OK</span></div>}
-          {progress > 70 && <div>> Waking up AI systems... <span className="text-green-500">READY</span></div>}
-          {progress >= 100 && <div className="text-primary animate-pulse">> LAUNCH SEQUENCE INITIATED...</div>}
+          {progress > 10 && <div>&gt; Loading Core Neural Modules... <span className="text-green-500">OK</span></div>}
+          {progress > 30 && <div>&gt; Connecting to 3D Rendering Engine... <span className="text-green-500">OK</span></div>}
+          {progress > 50 && <div>&gt; Establishing WebGL Context... <span className="text-green-500">OK</span></div>}
+          {progress > 70 && <div>&gt; Waking up AI systems... <span className="text-green-500">READY</span></div>}
+          {progress >= 100 && <div className="text-primary animate-pulse">&gt; LAUNCH SEQUENCE INITIATED...</div>}
         </div>
       </div>
     </div>
