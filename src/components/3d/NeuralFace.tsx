@@ -34,10 +34,17 @@ const fragmentShader = `
     // Get luminance for depth
     float luma = dot(baseTex.rgb, vec3(0.299, 0.587, 0.114));
 
-    // Parallax
-    vec2 parallaxOffset = uGaze * (luma * 0.15);
+    // Parallax tracking math
+    // uGaze * 0.05 shifts the ENTIRE face towards the cursor.
+    // uGaze * (luma * 0.15) shifts the bright foreground (nose/brow) MORE than the dark background.
+    // We SUBTRACT from uv to move the rendered image towards the gaze direction.
+    vec2 baseOffset = uGaze * 0.05;
+    vec2 depthOffset = uGaze * (luma * 0.15);
+    
     float breath = sin(uTime * 1.5 + uv.y * 5.0) * 0.003;
-    uv += parallaxOffset + vec2(0.0, breath);
+    
+    uv -= (baseOffset + depthOffset);
+    uv.y += breath;
 
     // Final sample with warped UVs
     vec4 finalTexNormal = texture2D(uTexture, uv);
@@ -144,9 +151,9 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef }: NeuralSceneProps) => {
     
     if (meshRef.current) {
       meshRef.current.position.x = xOffsetRef.current
-      // Physically rotate the entire mesh to track cursor, combined with shader parallax
-      meshRef.current.rotation.y = gazeRef.current.x * 0.4
-      meshRef.current.rotation.x = -gazeRef.current.y * 0.4
+      // Removed the 3D plane rotation because it breaks the 2D image illusion by skewing the rectangle.
+      // All 3D movement is now handled perfectly by the shader's internal UV depth mapping.
+      meshRef.current.rotation.set(0, 0, 0)
     }
 
     uniforms.uTime.value = t
