@@ -57,9 +57,8 @@ export const FeaturedSystems = () => {
   const [activeCaseStudy, setActiveCaseStudy] = useState<string | null>(null)
 
   return (
-    <div className="w-full h-screen mx-auto py-24 px-6 relative content-scroll overflow-y-auto scrollbar-thin scrollbar-thumb-white/10" id="projects">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-16">
+    <section className="relative w-full max-w-7xl mx-auto py-24 px-6" id="projects">
+      <div className="mb-20">
         <h2 className="text-4xl md:text-6xl font-black mb-4 tracking-tighter text-white">FEATURED SYSTEMS</h2>
         <div className="h-1 w-24 bg-primary"></div>
       </div>
@@ -225,7 +224,6 @@ export const FeaturedSystems = () => {
           </div>
         </div>
       )}
-      </div>
-    </div>
+    </section>
   )
 }

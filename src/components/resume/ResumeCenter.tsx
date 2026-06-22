@@ -2,8 +2,7 @@ import { Download, FileText, Briefcase, GraduationCap, Award, Code } from 'lucid
 
 export const ResumeCenter = () => {
   return (
-    <div className="w-full h-screen mx-auto py-24 px-6 relative content-scroll overflow-y-auto scrollbar-thin scrollbar-thumb-white/10" id="resume">
-      <div className="max-w-6xl mx-auto">
+    <div className="w-full max-w-6xl mx-auto py-24 px-6 relative" id="resume">
       {/* Background glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
 
@@ -131,7 +130,6 @@ export const ResumeCenter = () => {
             </ul>
           </section>
 
-        </div>
         </div>
       </div>
     </div>
