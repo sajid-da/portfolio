@@ -30,7 +30,8 @@ export const ProjectArchive = () => {
   ]
 
   return (
-    <section className="relative w-full max-w-7xl mx-auto py-24 px-6">
+    <div className="w-full h-screen mx-auto py-24 px-6 relative content-scroll overflow-y-auto scrollbar-thin scrollbar-thumb-white/10" id="archive">
+      <div className="max-w-7xl mx-auto">
       <div className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h2 className="text-3xl md:text-5xl font-bold mb-4 text-white">PROJECT ARCHIVE</h2>
@@ -67,7 +68,8 @@ export const ProjectArchive = () => {
             </div>
           </div>
         ))}
+        </div>
       </div>
-    </section>
+    </div>
   )
 }

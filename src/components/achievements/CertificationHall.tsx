@@ -60,7 +60,8 @@ export const CertificationHall = () => {
   const [openId, setOpenId] = useState<string | null>('ai')
 
   return (
-    <section className="relative w-full max-w-5xl mx-auto py-24 px-6" id="certifications">
+    <div className="w-full h-screen mx-auto py-24 px-6 relative content-scroll overflow-y-auto scrollbar-thin scrollbar-thumb-white/10" id="certifications">
+      <div className="max-w-5xl mx-auto">
       <div className="mb-20 text-center">
         <h2 className="text-4xl md:text-6xl font-black mb-4 text-white tracking-tighter">CERTIFICATION HALL</h2>
         <div className="h-1 w-24 bg-white/20 mx-auto"></div>
@@ -106,7 +107,8 @@ export const CertificationHall = () => {
             </div>
           </div>
         ))}
+        </div>
       </div>
-    </section>
+    </div>
   )
 }
