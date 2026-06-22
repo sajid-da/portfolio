@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo } from 'react'
+import { useRef, useEffect, useMemo, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -82,9 +82,10 @@ interface NeuralSceneProps {
   mouseRef: React.MutableRefObject<[number, number]>
   idleRef: React.MutableRefObject<number>
   sectionRef: React.MutableRefObject<string>
+  isMobile: boolean
 }
 
-const NeuralScene = ({ mouseRef, idleRef, sectionRef }: NeuralSceneProps) => {
+const NeuralScene = ({ mouseRef, idleRef, sectionRef, isMobile }: NeuralSceneProps) => {
   const meshRef = useRef<THREE.Mesh>(null)
   
   const gazeRef = useRef(new THREE.Vector2(0, 0))
@@ -125,6 +126,12 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef }: NeuralSceneProps) => {
     const sectionState = SECTION_STATES[effectiveSection] ?? SECTION_STATES.hero
     let targetOpacity = sectionState.opacity;
     if (section === 'terminal') targetOpacity = 0.15;
+    
+    // Mobile optimization: keep face centered and lower opacity to avoid text conflict
+    const targetOffset = isMobile ? 0.0 : sectionState.xOffset;
+    if (isMobile) {
+      targetOpacity *= 0.3; 
+    }
 
     // ── Gaze Tracking & Smiling ──
     let targetSmile = 0.0;
@@ -147,7 +154,7 @@ const NeuralScene = ({ mouseRef, idleRef, sectionRef }: NeuralSceneProps) => {
     smileRef.current += (targetSmile - smileRef.current) * 0.05
 
     opacityRef.current += (targetOpacity - opacityRef.current) * 0.05
-    xOffsetRef.current += (sectionState.xOffset - xOffsetRef.current) * 0.04
+    xOffsetRef.current += (targetOffset - xOffsetRef.current) * 0.04
     
     if (meshRef.current) {
       meshRef.current.position.x = xOffsetRef.current
@@ -181,6 +188,14 @@ export const NeuralFace = () => {
   const mouseRef = useRef<[number, number]>([0, 0])
   const idleRef = useRef<number>(Date.now())
   const sectionRef = useRef<string>('hero')
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     const handleMouse = (e: MouseEvent) => {
@@ -228,6 +243,7 @@ export const NeuralFace = () => {
           mouseRef={mouseRef}
           idleRef={idleRef}
           sectionRef={sectionRef}
+          isMobile={isMobile}
         />
       </Canvas>
     </div>
